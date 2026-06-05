@@ -6,7 +6,7 @@ interface PartSelectorProps {
   partType: string;
   parts?: SubmarinePart[];
   selectedPart: SubmarinePart | null;
-  onSelectPart: (part: SubmarinePart) => void;
+  onSelectPart: (part: SubmarinePart | null) => void;
   quantity: number;
   onQuantityChange: (qty: number) => void;
 }
@@ -19,17 +19,20 @@ export default function PartSelector({
   quantity,
   onQuantityChange,
 }: PartSelectorProps) {
-  const currentClassKey = selectedPart ? selectedPart.classKey : 'shark';
+  const currentClassKey = selectedPart ? selectedPart.classKey : '';
   const currentIsModified = selectedPart ? selectedPart.isModified : false;
 
   const handleClassChange = (classKey: string) => {
+    // If no part was selected, default isModified to false
+    const isMod = selectedPart ? currentIsModified : false;
     const matchingPart = parts.find(
-      (p) => p.partType === partType && p.classKey === classKey && p.isModified === currentIsModified
+      (p) => p.partType === partType && p.classKey === classKey && p.isModified === isMod
     );
     if (matchingPart) onSelectPart(matchingPart);
   };
 
   const handleModifiedToggle = (checked: boolean) => {
+    if (!selectedPart) return;
     const matchingPart = parts.find(
       (p) => p.partType === partType && p.classKey === currentClassKey && p.isModified === checked
     );
@@ -58,24 +61,48 @@ export default function PartSelector({
           <span style={{ color: 'var(--color-gold)' }}>✦</span> {partType}
         </h3>
 
-        <label className="toggle-container">
-          <input
-            type="checkbox"
-            style={{ display: 'none' }}
-            checked={currentIsModified}
-            onChange={(e) => handleModifiedToggle(e.target.checked)}
-          />
-          <div className="toggle-switch"></div>
-          <span style={{
-            fontSize: '0.75rem',
-            fontWeight: '700',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            color: currentIsModified ? 'var(--color-gold)' : 'var(--color-text-muted)',
-          }}>
-            Modified
-          </span>
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {selectedPart && (
+            <button
+              type="button"
+              onClick={() => onSelectPart(null)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--color-text-muted)',
+                fontSize: '0.72rem',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                padding: '0 0.25rem',
+                outline: 'none',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-text-muted)'}
+            >
+              Omit
+            </button>
+          )}
+
+          <label className="toggle-container" style={{ opacity: selectedPart ? 1 : 0.5, cursor: selectedPart ? 'pointer' : 'not-allowed' }}>
+            <input
+              type="checkbox"
+              style={{ display: 'none' }}
+              checked={currentIsModified}
+              onChange={(e) => handleModifiedToggle(e.target.checked)}
+              disabled={!selectedPart}
+            />
+            <div className="toggle-switch"></div>
+            <span style={{
+              fontSize: '0.75rem',
+              fontWeight: '700',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: currentIsModified ? 'var(--color-gold)' : 'var(--color-text-muted)',
+            }}>
+              Modified
+            </span>
+          </label>
+        </div>
       </div>
 
       <div style={{
@@ -112,7 +139,7 @@ export default function PartSelector({
         })}
       </div>
 
-      {selectedPart && (
+      {selectedPart ? (
         <>
           <div style={{
             display: 'flex',
@@ -135,11 +162,11 @@ export default function PartSelector({
             </div>
             <div>
               {inStock ? (
-                <span className="badge badge-success" style={{ gap: '0.2rem', padding: '0.15rem 0.45rem', fontSize: '0.65rem' }}>
+                <span className="badge badge-success" style={{ gap: '0.2rem', padding: '0.15rem 0.45rem', fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
                   <Check size={8} /> In Stock ({selectedPart.stock})
                 </span>
               ) : (
-                <span className="badge badge-warning" style={{ gap: '0.2rem', padding: '0.15rem 0.45rem', fontSize: '0.65rem', opacity: 0.9 }}>
+                <span className="badge badge-warning" style={{ gap: '0.2rem', padding: '0.15rem 0.45rem', fontSize: '0.65rem', opacity: 0.9, whiteSpace: 'nowrap' }}>
                   <Hammer size={8} /> Order Only
                 </span>
               )}
@@ -201,6 +228,23 @@ export default function PartSelector({
             )}
           </div>
         </>
+      ) : (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'rgba(255, 255, 255, 0.02)',
+          border: '1px dashed rgba(197, 160, 89, 0.2)',
+          borderRadius: '4px',
+          padding: '1.5rem',
+          color: 'var(--color-text-muted)',
+          fontSize: '0.82rem',
+          textAlign: 'center',
+          height: '76px',
+          boxSizing: 'border-box',
+        }}>
+          Part omitted (select a class above to include)
+        </div>
       )}
     </div>
   );

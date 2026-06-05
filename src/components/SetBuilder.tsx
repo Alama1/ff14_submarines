@@ -10,6 +10,55 @@ interface SetBuilderProps {
 
 type QuantityMap = Record<PartType, number>;
 
+interface PresetDefinition {
+  name: string;
+  description: string;
+  parts: Record<PartType, { classKey: string; isModified: boolean } | null>;
+}
+
+const PRESETS: PresetDefinition[] = [
+  {
+    name: 'WSUC',
+    description: 'Whale Hull, Shark Stern, Unkiu Bow, Coelacanth Bridge (Standard)',
+    parts: {
+      Hull: { classKey: 'whale', isModified: false },
+      Stern: { classKey: 'shark', isModified: false },
+      Bow: { classKey: 'unkiu', isModified: false },
+      Bridge: { classKey: 'coelacanth', isModified: false },
+    },
+  },
+  {
+    name: 'SSSS',
+    description: 'All Shark Parts (Starter / Speed)',
+    parts: {
+      Hull: { classKey: 'shark', isModified: false },
+      Stern: { classKey: 'shark', isModified: false },
+      Bow: { classKey: 'shark', isModified: false },
+      Bridge: { classKey: 'shark', isModified: false },
+    },
+  },
+  {
+    name: 'WSUC++',
+    description: 'Modified Whale, Shark, Unkiu, Coelacanth (Max Stats)',
+    parts: {
+      Hull: { classKey: 'whale', isModified: true },
+      Stern: { classKey: 'shark', isModified: true },
+      Bow: { classKey: 'unkiu', isModified: true },
+      Bridge: { classKey: 'coelacanth', isModified: true },
+    },
+  },
+  {
+    name: 'W-UC',
+    description: 'Whale Hull, Unkiu Bow, Coelacanth Bridge (No Stern)',
+    parts: {
+      Hull: { classKey: 'whale', isModified: false },
+      Stern: null,
+      Bow: { classKey: 'unkiu', isModified: false },
+      Bridge: { classKey: 'coelacanth', isModified: false },
+    },
+  },
+];
+
 export default function SetBuilder({ parts = [] }: SetBuilderProps) {
   const [selections, setSelections] = useState<SelectionMap>({
     Hull: null,
@@ -41,7 +90,7 @@ export default function SetBuilder({ parts = [] }: SetBuilderProps) {
     }
   }, [parts]);
 
-  const handleSelect = (type: PartType, part: SubmarinePart) => {
+  const handleSelect = (type: PartType, part: SubmarinePart | null) => {
     setSelections((prev) => ({ ...prev, [type]: part }));
   };
 
@@ -62,6 +111,38 @@ export default function SetBuilder({ parts = [] }: SetBuilderProps) {
     if (!isNaN(n) && n >= 1) handleSetCountChange(n);
   };
 
+  const applyPreset = (preset: PresetDefinition) => {
+    const newSelections: SelectionMap = { Hull: null, Stern: null, Bow: null, Bridge: null };
+    PART_TYPES.forEach((type) => {
+      const spec = preset.parts[type];
+      if (spec) {
+        const match = parts.find(
+          (p) => p.partType === type && p.classKey === spec.classKey && p.isModified === spec.isModified
+        );
+        newSelections[type] = match ?? null;
+      } else {
+        newSelections[type] = null;
+      }
+    });
+    setSelections(newSelections);
+  };
+
+  const getActivePreset = (): string | null => {
+    for (const preset of PRESETS) {
+      const matches = PART_TYPES.every((type) => {
+        const spec = preset.parts[type];
+        const sel = selections[type];
+        if (spec === null) return sel === null;
+        if (sel === null) return false;
+        return sel.classKey === spec.classKey && sel.isModified === spec.isModified;
+      });
+      if (matches) return preset.name;
+    }
+    return null;
+  };
+
+  const activePreset = getActivePreset();
+
   const allSameQty =
     quantities.Hull === quantities.Stern &&
     quantities.Stern === quantities.Bow &&
@@ -77,18 +158,21 @@ export default function SetBuilder({ parts = [] }: SetBuilderProps) {
     return part && part.stock === 0;
   });
 
-  const allSelected = PART_TYPES.every((type) => selections[type] !== null);
+  const anySelected = PART_TYPES.some((type) => selections[type] !== null);
 
   const generateCopyText = (): string => {
-    if (!allSelected) return '';
+    if (!anySelected) return '';
 
     const lines = PART_TYPES.map((type) => {
-      const part = selections[type]!;
+      const part = selections[type];
+      if (!part) return null;
       const qty = quantities[type];
       const lineTotal = part.price * qty;
       const qtyStr = qty > 1 ? `×${qty}` : '';
       return `${type}: ${part.name}${qtyStr ? ` ${qtyStr}` : ''} — ${formatGil(lineTotal)}`;
-    }).join('\n');
+    })
+      .filter((line) => line !== null)
+      .join('\n');
 
     const setLabel = allSameQty && setCount > 1 ? `\nSets: ×${setCount}` : '';
 
@@ -117,6 +201,69 @@ Total Price: ${formatGil(totalPrice)}`;
         <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
           Choose components and set quantities per part, or use the set multiplier to order multiple identical builds at once.
         </p>
+      </div>
+
+      {/* Preset selections */}
+      <div className="ff-card-framed" style={{
+        marginBottom: '1.5rem',
+        padding: '1.25rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.75rem',
+        background: 'linear-gradient(135deg, rgba(197,160,89,0.03) 0%, rgba(21,31,51,0.1) 100%)',
+        borderLeft: '3px solid var(--color-gold)',
+      }}>
+        <div style={{ textAlign: 'left' }}>
+          <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-gold-light)', marginBottom: '0.2rem' }}>
+            Quick Set Presets
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+            Select a common configuration to instantly pre-fill components
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
+          {PRESETS.map((preset) => {
+            const isActive = activePreset === preset.name;
+            return (
+              <button
+                key={preset.name}
+                type="button"
+                onClick={() => applyPreset(preset)}
+                className={isActive ? 'ff-btn' : 'ff-btn-secondary'}
+                style={{
+                  padding: '0.5rem',
+                  fontSize: '0.8rem',
+                  fontWeight: '600',
+                  textAlign: 'center',
+                  borderRadius: '4px',
+                  boxShadow: isActive ? '0 0 12px var(--color-gold-glow)' : 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.15rem',
+                  height: 'auto',
+                }}
+                title={preset.description}
+              >
+                <span style={{ fontSize: '0.9rem', color: isActive ? '#121824' : 'var(--color-gold)' }}>
+                  {preset.name}
+                </span>
+                <span style={{ 
+                  fontSize: '0.65rem', 
+                  color: isActive ? 'rgba(18, 24, 36, 0.8)' : 'var(--color-text-muted)', 
+                  fontWeight: 'normal',
+                  textTransform: 'none',
+                  letterSpacing: 'normal'
+                }}>
+                  {preset.name === 'WSUC' && 'Standard'}
+                  {preset.name === 'SSSS' && 'All Shark'}
+                  {preset.name === 'WSUC++' && 'Modified'}
+                  {preset.name === 'W-UC' && 'No Stern'}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Set multiplier banner */}
@@ -287,19 +434,19 @@ Total Price: ${formatGil(totalPrice)}`;
                 <div>
                   <strong style={{ display: 'block', marginBottom: '0.15rem' }}>Includes Custom-Crafted Parts</strong>
                   <span style={{ fontSize: '0.8rem' }}>
-                    One or more selected parts are currently out of stock. These will be custom-crafted for you. Delivery may take 1-3 days depending on material availability.
+                    One or more selected parts are currently out of stock. These will be custom-crafted for you. Delivery may take 1-7 days depending on material availability and current load.
                   </span>
                 </div>
               </div>
             )}
 
-            {!hasOutOfStock && allSelected && (
+            {!hasOutOfStock && anySelected && (
               <div className="ff-alert ff-alert-info" style={{ textAlign: 'left', margin: 0, background: 'rgba(16, 185, 129, 0.05)', color: 'var(--color-success)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
                 <Check size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
                 <div>
-                  <strong style={{ display: 'block', marginBottom: '0.15rem' }}>All Components In Stock</strong>
+                  <strong style={{ display: 'block', marginBottom: '0.15rem' }}>All Selected Components In Stock</strong>
                   <span style={{ fontSize: '0.8rem', color: 'var(--color-text-main)' }}>
-                    Excellent selection! All parts are currently in inventory. Ready for immediate delivery.
+                    Excellent selection! All selected parts are currently in inventory. Ready for immediate delivery.
                   </span>
                 </div>
               </div>
@@ -311,7 +458,7 @@ Total Price: ${formatGil(totalPrice)}`;
                 className="ff-btn glow-active"
                 style={{ flex: 1, minWidth: '200px' }}
                 onClick={handleCopy}
-                disabled={!allSelected}
+                disabled={!anySelected}
               >
                 {copied ? (
                   <><Check size={16} /> Order Copied!</>
