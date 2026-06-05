@@ -28,6 +28,12 @@ function App() {
     }
   };
 
+  const handleUpdatePart = (partId: string, updates: Partial<SubmarinePart>): void => {
+    setParts((prev) =>
+      prev.map((p) => (p.id === partId ? { ...p, ...updates } : p))
+    );
+  };
+
   useEffect(() => {
     fetchParts();
 
@@ -65,9 +71,9 @@ function App() {
         <div className="app-title-container">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Anchor size={36} style={{ color: 'var(--color-gold)', filter: 'drop-shadow(0 0 8px var(--color-gold-glow))' }} />
-            <h1 className="app-title">Eorzean Submariner</h1>
+            <h1 className="app-title">Alamai Submarines</h1>
           </div>
-          <span className="app-subtitle">FFXIV Submarine Parts stock &amp; builder</span>
+          <span className="app-subtitle">Best Submarine parts in Eorzea</span>
         </div>
       </header>
 
@@ -118,7 +124,7 @@ function App() {
             {activeTab === 'catalog' && <StockCatalog parts={parts} />}
             {activeTab === 'builder' && <SetBuilder parts={parts} />}
             {activeTab === 'admin' && (
-              <AdminPanel parts={parts} onRefreshParts={fetchParts} />
+              <AdminPanel parts={parts} onRefreshParts={fetchParts} onUpdatePart={handleUpdatePart} />
             )}
           </>
         )}
@@ -132,7 +138,7 @@ function App() {
         fontSize: '0.75rem',
       }}>
         <p style={{ marginBottom: '0.5rem' }}>
-          Eorzean Submariner — FFXIV Submarine Parts stock tracker. Created with dedication to details.
+          Alamai Submarines — Best Submarine parts in Eorzea. Created with dedication to details.
         </p>
         <p style={{ opacity: 0.6 }}>
           FINAL FANTASY XIV © 2010 - 2026 SQUARE ENIX CO., LTD. All Rights Reserved. We are not affiliated with Square Enix.

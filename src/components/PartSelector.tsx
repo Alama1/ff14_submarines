@@ -140,7 +140,7 @@ export default function PartSelector({
                 </span>
               ) : (
                 <span className="badge badge-warning" style={{ gap: '0.2rem', padding: '0.15rem 0.45rem', fontSize: '0.65rem', opacity: 0.9 }}>
-                  <Hammer size={8} /> Craft to Order
+                  <Hammer size={8} /> Order Only
                 </span>
               )}
             </div>

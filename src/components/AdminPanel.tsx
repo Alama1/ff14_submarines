@@ -8,9 +8,10 @@ import { SubmarinePart, UpdateStatus, UpdatingMap } from '../types';
 interface AdminPanelProps {
   parts?: SubmarinePart[];
   onRefreshParts: () => void;
+  onUpdatePart: (partId: string, updates: Partial<SubmarinePart>) => void;
 }
 
-export default function AdminPanel({ parts = [], onRefreshParts }: AdminPanelProps) {
+export default function AdminPanel({ parts = [], onRefreshParts, onUpdatePart }: AdminPanelProps) {
   const [passcode, setPasscode] = useState<string>('');
   const [showPasscode, setShowPasscode] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -110,6 +111,7 @@ export default function AdminPanel({ parts = [], onRefreshParts }: AdminPanelPro
 
     if (success) {
       setUpdatingIds((prev) => ({ ...prev, [partId]: 'success' as UpdateStatus }));
+      onUpdatePart(partId, { [field]: parsedValue });
       setTimeout(() => {
         setUpdatingIds((prev) => {
           const copy = { ...prev };
@@ -117,7 +119,6 @@ export default function AdminPanel({ parts = [], onRefreshParts }: AdminPanelPro
           return copy;
         });
       }, 1500);
-      onRefreshParts();
     } else {
       setUpdatingIds((prev) => ({ ...prev, [partId]: 'error' as UpdateStatus }));
     }

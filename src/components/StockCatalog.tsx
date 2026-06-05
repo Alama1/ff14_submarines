@@ -173,14 +173,14 @@ export default function StockCatalog({ parts = [] }: StockCatalogProps) {
                     <span className="gil-coin">G</span>
                   </div>
 
-                  <div>
+                  <div style={{ flexShrink: 0 }}>
                     {inStock ? (
-                      <span className="badge badge-success" style={{ gap: '0.2rem' }}>
+                      <span className="badge badge-success" style={{ gap: '0.2rem', whiteSpace: 'nowrap' }}>
                         <CheckCircle size={10} /> In Stock ({part.stock})
                       </span>
                     ) : (
-                      <span className="badge badge-warning" style={{ gap: '0.2rem', opacity: 0.8 }}>
-                        <HelpCircle size={10} /> Craft to Order
+                      <span className="badge badge-warning" style={{ gap: '0.2rem', opacity: 0.8, whiteSpace: 'nowrap' }}>
+                        <HelpCircle size={10} /> Order Only
                       </span>
                     )}
                   </div>

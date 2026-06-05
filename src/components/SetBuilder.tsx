@@ -90,17 +90,12 @@ export default function SetBuilder({ parts = [] }: SetBuilderProps) {
       return `${type}: ${part.name}${qtyStr ? ` ${qtyStr}` : ''} — ${formatGil(lineTotal)}`;
     }).join('\n');
 
-    const statusText = hasOutOfStock
-      ? 'Includes Craft-on-Demand parts (will take time to build)'
-      : 'All items currently in stock (ready for immediate delivery)';
-
     const setLabel = allSameQty && setCount > 1 ? `\nSets: ×${setCount}` : '';
 
     return `--- FFXIV Submarine Order Request ---
 ${lines}${setLabel}
 ------------------------------------
-Total Price: ${formatGil(totalPrice)}
-Status: ${statusText}`;
+Total Price: ${formatGil(totalPrice)}`;
   };
 
   const handleCopy = () => {
