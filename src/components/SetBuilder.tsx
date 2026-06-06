@@ -469,7 +469,7 @@ Total Price: ${formatGil(totalPrice)}`;
             </div>
 
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', textAlign: 'center', marginTop: '-0.5rem' }}>
-              Copy this order request and paste it directly to the seller via Discord or in-game mail.
+              Copy this order request and paste it directly to @Alamai via Discord.
             </p>
 
           </div>
