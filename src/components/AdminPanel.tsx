@@ -1,14 +1,25 @@
 import { useState, useMemo, FormEvent, ChangeEvent, useEffect } from 'react';
-import { PART_TYPES, generateDefaultParts, savePartUpdate, saveAllParts } from '../SubmarineData';
-import { Lock, Unlock, Eye, EyeOff, Plus, Minus, RotateCcw, Upload, Download } from 'lucide-react';
+import {
+  PART_TYPES,
+  generateDefaultParts,
+  savePartUpdate,
+  saveAllParts,
+  saveBulkDiscount,
+  deleteBulkDiscount,
+  saveAllDiscounts,
+  generateDefaultDiscounts,
+} from '../SubmarineData';
+import { Lock, Unlock, Eye, EyeOff, Plus, Minus, RotateCcw, Upload, Download, Trash2, Tag } from 'lucide-react';
 import { isFirebaseConfigured, auth, allowedAdminEmails } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
-import { SubmarinePart, UpdateStatus, UpdatingMap } from '../types';
+import { SubmarinePart, UpdateStatus, UpdatingMap, BulkDiscount } from '../types';
 
 interface AdminPanelProps {
   parts?: SubmarinePart[];
   onRefreshParts: () => void;
   onUpdatePart: (partId: string, updates: Partial<SubmarinePart>) => void;
+  discounts?: BulkDiscount[];
+  onRefreshDiscounts: () => void;
 }
 
 interface AdminEditRowProps {
@@ -129,7 +140,101 @@ function AdminEditRow({ part, status, onAdjustStock, onFieldChange }: AdminEditR
   );
 }
 
-export default function AdminPanel({ parts = [], onRefreshParts, onUpdatePart }: AdminPanelProps) {
+interface AdminDiscountRowProps {
+  discount: BulkDiscount;
+  status?: UpdateStatus;
+  onFieldChange: (id: string, field: 'threshold' | 'discountPercent', value: string) => void;
+  onDelete: (id: string) => void;
+}
+
+function AdminDiscountRow({ discount, status, onFieldChange, onDelete }: AdminDiscountRowProps) {
+  const [threshold, setThreshold] = useState<string>(String(discount.threshold));
+  const [percent, setPercent] = useState<string>(String(discount.discountPercent));
+
+  useEffect(() => {
+    setThreshold(String(discount.threshold));
+  }, [discount.threshold]);
+
+  useEffect(() => {
+    setPercent(String(discount.discountPercent));
+  }, [discount.discountPercent]);
+
+  const handleBlur = (field: 'threshold' | 'discountPercent', localValue: string, originalValue: number) => {
+    let parsedValue = parseInt(localValue, 10);
+    if (isNaN(parsedValue)) parsedValue = 0;
+    if (parsedValue < 0) parsedValue = 0;
+    if (field === 'discountPercent' && parsedValue > 100) parsedValue = 100;
+
+    if (parsedValue !== originalValue) {
+      onFieldChange(discount.id, field, String(parsedValue));
+    }
+    if (field === 'threshold') setThreshold(String(parsedValue));
+    if (field === 'discountPercent') setPercent(String(parsedValue));
+  };
+
+  return (
+    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+      <td style={{ padding: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <input
+            type="number"
+            className="form-input"
+            style={{ width: '80px', textAlign: 'center', padding: '0.3rem', height: '32px', boxSizing: 'border-box' }}
+            value={threshold}
+            min="1"
+            onChange={(e) => setThreshold(e.target.value)}
+            onBlur={() => handleBlur('threshold', threshold, discount.threshold)}
+          />
+          <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>+ Sets</span>
+        </div>
+      </td>
+      <td style={{ padding: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <input
+            type="number"
+            className="form-input"
+            style={{ width: '80px', textAlign: 'center', padding: '0.3rem', height: '32px', boxSizing: 'border-box' }}
+            value={percent}
+            min="1"
+            max="100"
+            onChange={(e) => setPercent(e.target.value)}
+            onBlur={() => handleBlur('discountPercent', percent, discount.discountPercent)}
+          />
+          <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>% Off</span>
+        </div>
+      </td>
+      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+        {status === 'saving' && (
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-gold)' }} className="blink">...</span>
+        )}
+        {status === 'success' && (
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-success)' }}>✓</span>
+        )}
+        {status === 'error' && (
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-error)' }}>Err</span>
+        )}
+      </td>
+      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+        <button
+          type="button"
+          className="ff-btn-danger"
+          style={{ padding: '0.25rem 0.5rem', height: '32px', display: 'inline-flex', alignItems: 'center' }}
+          onClick={() => onDelete(discount.id)}
+        >
+          <Trash2 size={12} />
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+export default function AdminPanel({
+  parts = [],
+  onRefreshParts,
+  onUpdatePart,
+  discounts = [],
+  onRefreshDiscounts,
+}: AdminPanelProps) {
   const [passcode, setPasscode] = useState<string>('');
   const [showPasscode, setShowPasscode] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -147,6 +252,11 @@ export default function AdminPanel({ parts = [], onRefreshParts, onUpdatePart }:
 
   const [updatingIds, setUpdatingIds] = useState<UpdatingMap>({});
   const [bulkStatus, setBulkStatus] = useState<string>('');
+
+  const [updatingDiscountIds, setUpdatingDiscountIds] = useState<UpdatingMap>({});
+  const [newThreshold, setNewThreshold] = useState<string>('');
+  const [newPercent, setNewPercent] = useState<string>('');
+  const [discountError, setDiscountError] = useState<string>('');
 
   useEffect(() => {
     if (isFirebaseConfigured && auth) {
@@ -245,6 +355,97 @@ export default function AdminPanel({ parts = [], onRefreshParts, onUpdatePart }:
   const handleAdjustStock = async (part: SubmarinePart, delta: number) => {
     const newStock = Math.max(0, part.stock + delta);
     await handleFieldChange(part.id, 'stock', String(newStock));
+  };
+
+  const handleDiscountFieldChange = async (
+    discountId: string,
+    field: 'threshold' | 'discountPercent',
+    value: string
+  ) => {
+    let parsedValue = parseInt(value, 10);
+    if (isNaN(parsedValue)) parsedValue = 0;
+    if (parsedValue < 0) parsedValue = 0;
+    if (field === 'discountPercent' && parsedValue > 100) parsedValue = 100;
+
+    setUpdatingDiscountIds((prev) => ({ ...prev, [discountId]: 'saving' as UpdateStatus }));
+
+    const currentDiscount = discounts.find((d) => d.id === discountId);
+    if (!currentDiscount) return;
+
+    const updated = { ...currentDiscount, [field]: parsedValue };
+
+    const success = await saveBulkDiscount(updated);
+    if (success) {
+      setUpdatingDiscountIds((prev) => ({ ...prev, [discountId]: 'success' as UpdateStatus }));
+      onRefreshDiscounts();
+      setTimeout(() => {
+        setUpdatingDiscountIds((prev) => {
+          const copy = { ...prev };
+          delete copy[discountId];
+          return copy;
+        });
+      }, 1500);
+    } else {
+      setUpdatingDiscountIds((prev) => ({ ...prev, [discountId]: 'error' as UpdateStatus }));
+    }
+  };
+
+  const handleDeleteDiscount = async (discountId: string) => {
+    if (!window.confirm('Are you sure you want to delete this discount tier?')) return;
+    const success = await deleteBulkDiscount(discountId);
+    if (success) {
+      onRefreshDiscounts();
+    } else {
+      alert('Failed to delete discount tier.');
+    }
+  };
+
+  const handleAddDiscount = async (e: FormEvent) => {
+    e.preventDefault();
+    setDiscountError('');
+
+    const thresh = parseInt(newThreshold, 10);
+    const pct = parseInt(newPercent, 10);
+
+    if (isNaN(thresh) || thresh <= 0) {
+      setDiscountError('Threshold must be a positive number.');
+      return;
+    }
+    if (isNaN(pct) || pct <= 0 || pct > 100) {
+      setDiscountError('Discount percent must be between 1 and 100.');
+      return;
+    }
+
+    if (discounts.some((d) => d.threshold === thresh)) {
+      setDiscountError(`A discount tier for ${thresh}+ sets already exists.`);
+      return;
+    }
+
+    const newDiscount: BulkDiscount = {
+      id: `discount-${thresh}-${Date.now()}`,
+      threshold: thresh,
+      discountPercent: pct,
+    };
+
+    const success = await saveBulkDiscount(newDiscount);
+    if (success) {
+      setNewThreshold('');
+      setNewPercent('');
+      onRefreshDiscounts();
+    } else {
+      setDiscountError('Failed to save the new discount tier.');
+    }
+  };
+
+  const handleResetDiscounts = async () => {
+    if (!window.confirm('Are you sure you want to reset all discount tiers to defaults?')) return;
+    const defaults = generateDefaultDiscounts();
+    const success = await saveAllDiscounts(defaults);
+    if (success) {
+      onRefreshDiscounts();
+    } else {
+      alert('Failed to reset discounts.');
+    }
   };
 
   const handleSeedDatabase = async () => {
@@ -496,6 +697,126 @@ export default function AdminPanel({ parts = [], onRefreshParts, onUpdatePart }:
               {bulkStatus}
             </span>
           )}
+        </div>
+      </div>
+
+      {/* Bulk Discounts card */}
+      <div className="ff-card-framed" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
+        <h3 style={{
+          fontSize: '1.1rem',
+          textAlign: 'left',
+          marginBottom: '1rem',
+          borderBottom: '1px solid rgba(197, 160, 89, 0.15)',
+          paddingBottom: '0.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          color: 'var(--color-gold-light)',
+        }}>
+          <Tag size={18} /> Bulk Discount Rules
+        </h3>
+
+        <div style={{ display: 'flex', flexDirection: 'row', gap: '2rem', flexWrap: 'wrap' }}>
+          
+          {/* List of existing discounts */}
+          <div style={{ flex: '2 1 400px', minWidth: '300px' }}>
+            <h4 style={{ fontSize: '0.9rem', color: 'var(--color-text-title)', marginBottom: '0.75rem', textAlign: 'left', fontFamily: 'var(--font-title)' }}>
+              Active Discount Tiers
+            </h4>
+            
+            {discounts.length === 0 ? (
+              <div style={{
+                padding: '1.5rem',
+                textAlign: 'center',
+                background: 'var(--bg-input)',
+                border: '1px dashed rgba(197,160,89,0.2)',
+                borderRadius: '4px',
+                color: 'var(--color-text-muted)',
+                fontSize: '0.85rem'
+              }}>
+                No bulk discounts defined. Order totals will use standard pricing.
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto', background: 'var(--bg-input)', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(197, 160, 89, 0.2)', background: 'rgba(197, 160, 89, 0.02)' }}>
+                      <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: 'var(--color-gold)' }}>Threshold</th>
+                      <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: 'var(--color-gold)' }}>Discount (%)</th>
+                      <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: 'var(--color-gold)', width: '60px', textAlign: 'center' }}>Sync</th>
+                      <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: 'var(--color-gold)', width: '60px', textAlign: 'center' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {discounts.map((discount) => (
+                      <AdminDiscountRow
+                        key={discount.id}
+                        discount={discount}
+                        status={updatingDiscountIds[discount.id]}
+                        onFieldChange={handleDiscountFieldChange}
+                        onDelete={handleDeleteDiscount}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Form to add new discount */}
+          <div style={{ flex: '1 1 250px', minWidth: '250px', background: 'rgba(255,255,255,0.01)', padding: '1.25rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.03)' }}>
+            <h4 style={{ fontSize: '0.9rem', color: 'var(--color-text-title)', marginBottom: '1rem', textAlign: 'left', fontFamily: 'var(--font-title)' }}>
+              Add Discount Tier
+            </h4>
+            
+            <form onSubmit={handleAddDiscount} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>Threshold (Sets)</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  placeholder="e.g. 3"
+                  min="1"
+                  value={newThreshold}
+                  onChange={(e) => setNewThreshold(e.target.value)}
+                />
+              </div>
+              
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>Discount Percentage</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="number"
+                    className="form-input"
+                    style={{ flex: 1 }}
+                    placeholder="e.g. 10"
+                    min="1"
+                    max="100"
+                    value={newPercent}
+                    onChange={(e) => setNewPercent(e.target.value)}
+                  />
+                  <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>%</span>
+                </div>
+              </div>
+
+              {discountError && (
+                <div style={{ color: 'var(--color-error)', fontSize: '0.78rem', textAlign: 'left', lineHeight: '1.3' }}>
+                  {discountError}
+                </div>
+              )}
+
+              <button type="submit" className="ff-btn" style={{ padding: '0.5rem', marginTop: '0.25rem' }}>
+                <Plus size={14} /> Add Tier
+              </button>
+            </form>
+
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: '1.25rem', paddingTop: '1rem', display: 'flex', justifyContent: 'flex-start' }}>
+              <button type="button" className="ff-btn-secondary" style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem', width: '100%' }} onClick={handleResetDiscounts}>
+                <RotateCcw size={12} /> Reset to Defaults
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
 

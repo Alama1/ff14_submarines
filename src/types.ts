@@ -23,3 +23,10 @@ export type SelectionMap = Record<PartType, SubmarinePart | null>;
 export type UpdateStatus = 'saving' | 'success' | 'error';
 
 export type UpdatingMap = Record<string, UpdateStatus>;
+
+export interface BulkDiscount {
+  id: string;
+  threshold: number;
+  discountPercent: number;
+}
+

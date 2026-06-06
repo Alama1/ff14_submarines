@@ -1,26 +1,31 @@
 import { useState, useEffect } from 'react';
-import { loadSubmarineParts } from './SubmarineData';
+import { loadSubmarineParts, loadBulkDiscounts } from './SubmarineData';
 import StockCatalog from './components/StockCatalog';
 import SetBuilder from './components/SetBuilder';
 import AdminPanel from './components/AdminPanel';
 import { Anchor, Hammer, Lock, RefreshCw, Layers } from 'lucide-react';
-import { SubmarinePart } from './types';
+import { SubmarinePart, BulkDiscount } from './types';
 import './App.css';
-
+ 
 import { auth, isFirebaseConfigured, allowedAdminEmails } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-
+ 
 function App() {
   const [parts, setParts] = useState<SubmarinePart[]>([]);
+  const [discounts, setDiscounts] = useState<BulkDiscount[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'catalog' | 'builder' | 'admin'>('catalog');
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
-
-  const fetchParts = async (): Promise<void> => {
+ 
+  const fetchData = async (): Promise<void> => {
     setLoading(true);
     try {
-      const data = await loadSubmarineParts();
-      setParts(data);
+      const [partsData, discountsData] = await Promise.all([
+        loadSubmarineParts(),
+        loadBulkDiscounts(),
+      ]);
+      setParts(partsData);
+      setDiscounts(discountsData);
     } catch (e) {
       console.error(e);
     } finally {
@@ -35,7 +40,7 @@ function App() {
   };
 
   useEffect(() => {
-    fetchParts();
+    fetchData();
 
     if (isFirebaseConfigured && auth) {
       const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -122,9 +127,15 @@ function App() {
         ) : (
           <>
             {activeTab === 'catalog' && <StockCatalog parts={parts} />}
-            {activeTab === 'builder' && <SetBuilder parts={parts} />}
+            {activeTab === 'builder' && <SetBuilder parts={parts} discounts={discounts} />}
             {activeTab === 'admin' && (
-              <AdminPanel parts={parts} onRefreshParts={fetchParts} onUpdatePart={handleUpdatePart} />
+              <AdminPanel
+                parts={parts}
+                onRefreshParts={fetchData}
+                onUpdatePart={handleUpdatePart}
+                discounts={discounts}
+                onRefreshDiscounts={fetchData}
+              />
             )}
           </>
         )}

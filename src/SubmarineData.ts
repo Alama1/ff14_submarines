@@ -1,6 +1,6 @@
-import { collection, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, writeBatch, setDoc, deleteDoc } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
-import { SubmarinePart, SubmarineClass, PartType } from './types';
+import { SubmarinePart, SubmarineClass, PartType, BulkDiscount } from './types';
 
 export const PART_TYPES: PartType[] = ['Hull', 'Stern', 'Bow', 'Bridge'];
 
@@ -162,3 +162,134 @@ async function saveAllPartsToFirestore(parts: SubmarinePart[]): Promise<void> {
   });
   await batch.commit();
 }
+
+export function generateDefaultDiscounts(): BulkDiscount[] {
+  return [
+    { id: 'discount-20', threshold: 20, discountPercent: 5 },
+    { id: 'discount-48', threshold: 48, discountPercent: 7 },
+    { id: 'discount-100', threshold: 100, discountPercent: 10 },
+  ];
+}
+
+export function sortDiscounts(discounts: BulkDiscount[]): BulkDiscount[] {
+  return [...discounts].sort((a, b) => a.threshold - b.threshold);
+}
+
+const DISCOUNTS_LOCAL_STORAGE_KEY = 'ff14_submarine_bulk_discounts';
+
+export async function loadBulkDiscounts(): Promise<BulkDiscount[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const discountsCol = collection(db, 'bulk_discounts');
+      const snapshot = await getDocs(discountsCol);
+      if (!snapshot.empty) {
+        const list: BulkDiscount[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push({ id: docSnap.id, ...(docSnap.data() as Omit<BulkDiscount, 'id'>) });
+        });
+        return sortDiscounts(list);
+      } else {
+        const defaults = generateDefaultDiscounts();
+        await saveAllDiscountsToFirestore(defaults);
+        return defaults;
+      }
+    } catch (e) {
+      console.error('Error loading discounts from Firestore:', e);
+    }
+  }
+
+  const stored = localStorage.getItem(DISCOUNTS_LOCAL_STORAGE_KEY);
+  if (stored) {
+    try {
+      return sortDiscounts(JSON.parse(stored) as BulkDiscount[]);
+    } catch (e) {
+      console.error('Error parsing discounts from localStorage:', e);
+    }
+  }
+
+  const defaults = generateDefaultDiscounts();
+  localStorage.setItem(DISCOUNTS_LOCAL_STORAGE_KEY, JSON.stringify(defaults));
+  return defaults;
+}
+
+export async function saveBulkDiscount(discount: BulkDiscount): Promise<boolean> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const docRef = doc(db, 'bulk_discounts', discount.id);
+      const { id, ...data } = discount;
+      await setDoc(docRef, data, { merge: true });
+      return true;
+    } catch (e) {
+      console.error('Error saving discount to Firestore:', e);
+    }
+  }
+
+  const stored = localStorage.getItem(DISCOUNTS_LOCAL_STORAGE_KEY);
+  let discounts: BulkDiscount[] = [];
+  if (stored) {
+    try {
+      discounts = JSON.parse(stored);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  const idx = discounts.findIndex(d => d.id === discount.id);
+  if (idx !== -1) {
+    discounts[idx] = discount;
+  } else {
+    discounts.push(discount);
+  }
+  localStorage.setItem(DISCOUNTS_LOCAL_STORAGE_KEY, JSON.stringify(discounts));
+  return true;
+}
+
+export async function deleteBulkDiscount(discountId: string): Promise<boolean> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const docRef = doc(db, 'bulk_discounts', discountId);
+      await deleteDoc(docRef);
+      return true;
+    } catch (e) {
+      console.error('Error deleting discount from Firestore:', e);
+    }
+  }
+
+  const stored = localStorage.getItem(DISCOUNTS_LOCAL_STORAGE_KEY);
+  if (stored) {
+    try {
+      let discounts: BulkDiscount[] = JSON.parse(stored);
+      discounts = discounts.filter(d => d.id !== discountId);
+      localStorage.setItem(DISCOUNTS_LOCAL_STORAGE_KEY, JSON.stringify(discounts));
+      return true;
+    } catch (e) {
+      console.error('Error deleting discount from localStorage:', e);
+    }
+  }
+  return false;
+}
+
+export async function saveAllDiscounts(discounts: BulkDiscount[]): Promise<boolean> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await saveAllDiscountsToFirestore(discounts);
+      return true;
+    } catch (e) {
+      console.error('Error saving all discounts to Firestore:', e);
+    }
+  }
+
+  localStorage.setItem(DISCOUNTS_LOCAL_STORAGE_KEY, JSON.stringify(discounts));
+  return true;
+}
+
+async function saveAllDiscountsToFirestore(discounts: BulkDiscount[]): Promise<void> {
+  if (!db) return;
+  const batch = writeBatch(db);
+  discounts.forEach((discount) => {
+    const docRef = doc(db!, 'bulk_discounts', discount.id);
+    const { id, ...data } = discount;
+    batch.set(docRef, data, { merge: true });
+  });
+  await batch.commit();
+}
+

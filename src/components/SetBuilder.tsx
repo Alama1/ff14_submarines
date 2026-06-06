@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import PartSelector from './PartSelector';
 import { formatGil, PART_TYPES } from '../SubmarineData';
-import { Copy, Check, Info, Anchor, Plus, Minus } from 'lucide-react';
-import { SubmarinePart, PartType, SelectionMap } from '../types';
+import { Copy, Check, Info, Anchor, Plus, Minus, Tag } from 'lucide-react';
+import { SubmarinePart, PartType, SelectionMap, BulkDiscount } from '../types';
 
 interface SetBuilderProps {
   parts?: SubmarinePart[];
+  discounts?: BulkDiscount[];
 }
 
 type QuantityMap = Record<PartType, number>;
@@ -59,7 +60,7 @@ const PRESETS: PresetDefinition[] = [
   },
 ];
 
-export default function SetBuilder({ parts = [] }: SetBuilderProps) {
+export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderProps) {
   const [selections, setSelections] = useState<SelectionMap>({
     Hull: null,
     Stern: null,
@@ -148,10 +149,31 @@ export default function SetBuilder({ parts = [] }: SetBuilderProps) {
     quantities.Stern === quantities.Bow &&
     quantities.Bow === quantities.Bridge;
 
-  const totalPrice = PART_TYPES.reduce<number>((sum, type) => {
+  const subtotalPrice = PART_TYPES.reduce<number>((sum, type) => {
     const part = selections[type];
     return sum + (part ? part.price * quantities[type] : 0);
   }, 0);
+
+  const selectedTypes = PART_TYPES.filter((type) => selections[type] !== null);
+  const completeSets = selectedTypes.length > 0
+    ? Math.min(...selectedTypes.map((type) => quantities[type]))
+    : 0;
+
+  const omittedCount = 4 - selectedTypes.length;
+  const isPartOmitted = omittedCount > 0 && selectedTypes.length > 0;
+  // Each omitted part adds +25% to the required sets threshold
+  const omissionMultiplier = 1 + omittedCount * 0.25;
+
+  const getRequiredSetsForDiscount = (d: BulkDiscount) => {
+    return isPartOmitted ? Math.ceil(d.threshold * omissionMultiplier) : d.threshold;
+  };
+
+  const activeDiscount = discounts
+    .filter((d) => completeSets >= getRequiredSetsForDiscount(d))
+    .reduce((max, d) => (d.discountPercent > max.discountPercent ? d : max), { threshold: 0, discountPercent: 0 });
+
+  const discountAmount = Math.round(subtotalPrice * (activeDiscount.discountPercent / 100));
+  const totalPrice = subtotalPrice - discountAmount;
 
   const hasOutOfStock = PART_TYPES.some((type) => {
     const part = selections[type];
@@ -175,11 +197,17 @@ export default function SetBuilder({ parts = [] }: SetBuilderProps) {
       .join('\n');
 
     const setLabel = allSameQty && setCount > 1 ? `\nSets: ×${setCount}` : '';
+    const thresholdUsed = isPartOmitted ? Math.ceil(activeDiscount.threshold * omissionMultiplier) : activeDiscount.threshold;
+    const discountLabel = activeDiscount.discountPercent > 0
+      ? `\nSubtotal: ${formatGil(subtotalPrice)}\nBulk Discount (${activeDiscount.discountPercent}% for ${thresholdUsed}+ sets${isPartOmitted ? ` [${omittedCount} part${omittedCount > 1 ? 's' : ''} omitted adj.]` : ''}): -${formatGil(discountAmount)}`
+      : '';
+
+    const priceText = activeDiscount.discountPercent > 0 ? formatGil(totalPrice) : formatGil(subtotalPrice);
 
     return `--- FFXIV Submarine Order Request ---
 ${lines}${setLabel}
-------------------------------------
-Total Price: ${formatGil(totalPrice)}`;
+------------------------------------${discountLabel}
+Total Price: ${priceText}`;
   };
 
   const handleCopy = () => {
@@ -409,24 +437,111 @@ Total Price: ${formatGil(totalPrice)}`;
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
-                alignItems: 'center',
                 gap: '0.5rem',
               }}>
-                <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
-                  Total Price
-                </span>
-                <div className="gil-price" style={{ fontSize: '1.8rem', textShadow: '0 0 10px rgba(197,160,89,0.2)' }}>
-                  <span>{new Intl.NumberFormat('en-US').format(totalPrice)}</span>
-                  <span className="gil-coin" style={{ width: '22px', height: '22px', fontSize: '12px' }}>G</span>
-                </div>
-                {allSameQty && quantities.Hull > 1 && (
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                    {quantities.Hull} full set{quantities.Hull > 1 ? 's' : ''}
+                {activeDiscount.discountPercent > 0 ? (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.4rem' }}>
+                      <span style={{ color: 'var(--color-text-muted)' }}>Subtotal:</span>
+                      <span className="gil-price" style={{ fontSize: '0.92rem' }}>
+                        <span>{new Intl.NumberFormat('en-US').format(subtotalPrice)}</span>
+                        <span className="gil-coin" style={{ width: '13px', height: '13px', fontSize: '8px' }}>G</span>
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--color-success)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.4rem' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <Tag size={12} /> Bulk Discount ({activeDiscount.discountPercent}%):
+                      </span>
+                      <span>-{new Intl.NumberFormat('en-US').format(discountAmount)} G</span>
+                    </div>
+                  </>
+                ) : null}
+
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem', marginTop: activeDiscount.discountPercent > 0 ? '0.4rem' : '0' }}>
+                  <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
+                    Total Price
                   </span>
-                )}
+                  <div className="gil-price" style={{ fontSize: '1.8rem', textShadow: '0 0 10px rgba(197,160,89,0.2)' }}>
+                    <span>{new Intl.NumberFormat('en-US').format(totalPrice)}</span>
+                    <span className="gil-coin" style={{ width: '22px', height: '22px', fontSize: '12px' }}>G</span>
+                  </div>
+                  {completeSets > 1 && (
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                      {completeSets} full set{completeSets > 1 ? 's' : ''} ordered
+                    </span>
+                  )}
+                </div>
               </div>
 
             </div>
+
+            {/* Discount Legend/Guide */}
+            {discounts.length > 0 && (
+              <div style={{
+                background: 'rgba(197, 160, 89, 0.02)',
+                border: '1px solid rgba(197, 160, 89, 0.1)',
+                borderRadius: '4px',
+                padding: '0.75rem 1rem',
+                textAlign: 'left',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem'
+              }}>
+                <div style={{
+                  fontSize: '0.75rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: 'var(--color-gold-light)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                  fontWeight: '600'
+                }}>
+                  <Tag size={12} /> Bulk Discount Guide
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', fontSize: '0.72rem' }}>
+                  {discounts.map((d) => {
+                    const requiredSets = isPartOmitted ? Math.ceil(d.threshold * omissionMultiplier) : d.threshold;
+                    const isCurrent = activeDiscount.threshold === d.threshold;
+                    return (
+                      <div
+                        key={d.id}
+                        style={{
+                          padding: '0.2rem 0.5rem',
+                          borderRadius: '3px',
+                          background: isCurrent ? 'var(--color-success-bg)' : 'transparent',
+                          border: `1px solid ${isCurrent ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.05)'}`,
+                          color: isCurrent ? 'var(--color-success)' : 'var(--color-text-muted)',
+                          fontWeight: isCurrent ? 'bold' : 'normal',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                        }}
+                      >
+                        <span>{requiredSets}+ Sets:</span>
+                        <span style={{ color: isCurrent ? 'var(--color-success)' : 'var(--color-text-title)' }}>{d.discountPercent}% Off</span>
+                        {isCurrent && <span style={{ fontSize: '0.65rem' }}>★ Active</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                {isPartOmitted && (
+                  <div style={{
+                    fontSize: '0.68rem',
+                    color: 'var(--color-warning)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.03)',
+                    paddingTop: '0.4rem',
+                    marginTop: '0.1rem'
+                  }}>
+                    <Info size={11} style={{ flexShrink: 0 }} />
+                    <span>{omittedCount} part{omittedCount > 1 ? 's' : ''} omitted — thresholds increased by {Math.round(omissionMultiplier * 100) - 100}% (+25% per omitted part).</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {hasOutOfStock && (
               <div className="ff-alert ff-alert-warning" style={{ textAlign: 'left', margin: 0 }}>
