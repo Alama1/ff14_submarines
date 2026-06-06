@@ -11,6 +11,124 @@ interface AdminPanelProps {
   onUpdatePart: (partId: string, updates: Partial<SubmarinePart>) => void;
 }
 
+interface AdminEditRowProps {
+  part: SubmarinePart;
+  status?: UpdateStatus;
+  onAdjustStock: (part: SubmarinePart, delta: number) => void;
+  onFieldChange: (partId: string, field: keyof SubmarinePart, value: string) => void;
+}
+
+function AdminEditRow({ part, status, onAdjustStock, onFieldChange }: AdminEditRowProps) {
+  const [stock, setStock] = useState<string>(String(part.stock));
+  const [price, setPrice] = useState<string>(String(part.price));
+
+  useEffect(() => {
+    setStock(String(part.stock));
+  }, [part.stock]);
+
+  useEffect(() => {
+    setPrice(String(part.price));
+  }, [part.price]);
+
+  const handleBlur = (field: keyof SubmarinePart, localValue: string, originalValue: number) => {
+    let parsedValue = parseInt(localValue, 10);
+    if (isNaN(parsedValue)) parsedValue = 0;
+    if (parsedValue < 0) parsedValue = 0;
+    
+    if (parsedValue !== originalValue) {
+      onFieldChange(part.id, field, String(parsedValue));
+    }
+    // reset local to parsed just in case
+    if (field === 'stock') setStock(String(parsedValue));
+    if (field === 'price') setPrice(String(parsedValue));
+  };
+
+  return (
+    <tr
+      style={{
+        borderBottom: '1px solid rgba(255,255,255,0.03)',
+        background: part.isModified ? 'rgba(197, 160, 89, 0.01)' : 'transparent',
+      }}
+      className="admin-edit-row"
+    >
+      <td style={{ padding: '0.75rem', fontWeight: '500' }}>
+        <div style={{ color: part.isModified ? 'var(--color-gold-light)' : 'var(--color-text-title)' }}>
+          {part.name}
+        </div>
+        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+          ID: {part.id}
+        </div>
+      </td>
+
+      <td style={{ padding: '0.75rem' }}>
+        {part.isModified ? (
+          <span className="badge badge-warning" style={{ fontSize: '0.6rem', padding: '0.1rem 0.3rem' }}>Mod</span>
+        ) : (
+          <span className="badge" style={{ fontSize: '0.6rem', padding: '0.1rem 0.3rem', background: '#334155', color: '#cbd5e1' }}>Std</span>
+        )}
+      </td>
+
+      <td style={{ padding: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+          <button
+            type="button"
+            className="ff-btn-secondary"
+            style={{ padding: '0.25rem 0.5rem', height: '32px' }}
+            onClick={() => onAdjustStock(part, -1)}
+          >
+            <Minus size={12} />
+          </button>
+          <input
+            type="number"
+            className="form-input"
+            style={{ width: '55px', textAlign: 'center', padding: '0.3rem', height: '32px', boxSizing: 'border-box' }}
+            value={stock}
+            min="0"
+            onChange={(e) => setStock(e.target.value)}
+            onBlur={() => handleBlur('stock', stock, part.stock)}
+          />
+          <button
+            type="button"
+            className="ff-btn-secondary"
+            style={{ padding: '0.25rem 0.5rem', height: '32px' }}
+            onClick={() => onAdjustStock(part, 1)}
+          >
+            <Plus size={12} />
+          </button>
+        </div>
+      </td>
+
+      <td style={{ padding: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <input
+            type="number"
+            className="form-input"
+            style={{ width: '100%', padding: '0.3rem 0.5rem', height: '32px', boxSizing: 'border-box' }}
+            value={price}
+            min="0"
+            step="10000"
+            onChange={(e) => setPrice(e.target.value)}
+            onBlur={() => handleBlur('price', price, part.price)}
+          />
+          <span className="gil-coin">G</span>
+        </div>
+      </td>
+
+      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+        {status === 'saving' && (
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-gold)' }} className="blink">...</span>
+        )}
+        {status === 'success' && (
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-success)' }}>✓</span>
+        )}
+        {status === 'error' && (
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-error)' }}>Err</span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
 export default function AdminPanel({ parts = [], onRefreshParts, onUpdatePart }: AdminPanelProps) {
   const [passcode, setPasscode] = useState<string>('');
   const [showPasscode, setShowPasscode] = useState<boolean>(false);
@@ -430,93 +548,15 @@ export default function AdminPanel({ parts = [], onRefreshParts, onUpdatePart }:
             </tr>
           </thead>
           <tbody>
-            {filteredParts.map((part) => {
-              const status = updatingIds[part.id];
-
-              return (
-                <tr
-                  key={part.id}
-                  style={{
-                    borderBottom: '1px solid rgba(255,255,255,0.03)',
-                    background: part.isModified ? 'rgba(197, 160, 89, 0.01)' : 'transparent',
-                  }}
-                  className="admin-edit-row"
-                >
-                  <td style={{ padding: '0.75rem', fontWeight: '500' }}>
-                    <div style={{ color: part.isModified ? 'var(--color-gold-light)' : 'var(--color-text-title)' }}>
-                      {part.name}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                      ID: {part.id}
-                    </div>
-                  </td>
-
-                  <td style={{ padding: '0.75rem' }}>
-                    {part.isModified ? (
-                      <span className="badge badge-warning" style={{ fontSize: '0.6rem', padding: '0.1rem 0.3rem' }}>Mod</span>
-                    ) : (
-                      <span className="badge" style={{ fontSize: '0.6rem', padding: '0.1rem 0.3rem', background: '#334155', color: '#cbd5e1' }}>Std</span>
-                    )}
-                  </td>
-
-                  <td style={{ padding: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
-                      <button
-                        type="button"
-                        className="ff-btn-secondary"
-                        style={{ padding: '0.25rem 0.5rem', height: '32px' }}
-                        onClick={() => handleAdjustStock(part, -1)}
-                      >
-                        <Minus size={12} />
-                      </button>
-                      <input
-                        type="number"
-                        className="form-input"
-                        style={{ width: '55px', textAlign: 'center', padding: '0.3rem', height: '32px', boxSizing: 'border-box' }}
-                        value={part.stock}
-                        min="0"
-                        onChange={(e) => handleFieldChange(part.id, 'stock', e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="ff-btn-secondary"
-                        style={{ padding: '0.25rem 0.5rem', height: '32px' }}
-                        onClick={() => handleAdjustStock(part, 1)}
-                      >
-                        <Plus size={12} />
-                      </button>
-                    </div>
-                  </td>
-
-                  <td style={{ padding: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <input
-                        type="number"
-                        className="form-input"
-                        style={{ width: '100%', padding: '0.3rem 0.5rem', height: '32px', boxSizing: 'border-box' }}
-                        value={part.price}
-                        min="0"
-                        step="10000"
-                        onChange={(e) => handleFieldChange(part.id, 'price', e.target.value)}
-                      />
-                      <span className="gil-coin">G</span>
-                    </div>
-                  </td>
-
-                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                    {status === 'saving' && (
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-gold)' }} className="blink">...</span>
-                    )}
-                    {status === 'success' && (
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-success)' }}>✓</span>
-                    )}
-                    {status === 'error' && (
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-error)' }}>Err</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+            {filteredParts.map((part) => (
+              <AdminEditRow
+                key={part.id}
+                part={part}
+                status={updatingIds[part.id]}
+                onAdjustStock={handleAdjustStock}
+                onFieldChange={handleFieldChange}
+              />
+            ))}
           </tbody>
         </table>
       </div>
