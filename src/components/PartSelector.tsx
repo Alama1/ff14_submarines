@@ -198,7 +198,7 @@ export default function PartSelector({
                 value={quantity}
                 onChange={(e) => handleQtyInput(e.target.value)}
                 style={{
-                  width: '44px',
+                  width: '64px',
                   textAlign: 'center',
                   background: 'var(--bg-input)',
                   border: '1px solid rgba(197,160,89,0.2)',

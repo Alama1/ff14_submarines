@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import PartSelector from './PartSelector';
-import { formatGil, PART_TYPES } from '../SubmarineData';
+import { formatGil, PART_TYPES, ALL_PART_TYPES } from '../SubmarineData';
 import { Copy, Check, Info, Anchor, Plus, Minus, Tag } from 'lucide-react';
 import { SubmarinePart, PartType, SelectionMap, BulkDiscount } from '../types';
 
@@ -26,6 +26,7 @@ const PRESETS: PresetDefinition[] = [
       Stern: { classKey: 'shark', isModified: false },
       Bow: { classKey: 'unkiu', isModified: false },
       Bridge: { classKey: 'coelacanth', isModified: false },
+      Materials: null,
     },
   },
   {
@@ -36,6 +37,7 @@ const PRESETS: PresetDefinition[] = [
       Stern: { classKey: 'shark', isModified: false },
       Bow: { classKey: 'shark', isModified: false },
       Bridge: { classKey: 'shark', isModified: false },
+      Materials: null,
     },
   },
   {
@@ -46,6 +48,7 @@ const PRESETS: PresetDefinition[] = [
       Stern: { classKey: 'shark', isModified: true },
       Bow: { classKey: 'unkiu', isModified: true },
       Bridge: { classKey: 'coelacanth', isModified: true },
+      Materials: null,
     },
   },
   {
@@ -56,6 +59,7 @@ const PRESETS: PresetDefinition[] = [
       Stern: null,
       Bow: { classKey: 'unkiu', isModified: false },
       Bridge: { classKey: 'coelacanth', isModified: false },
+      Materials: null,
     },
   },
 ];
@@ -66,6 +70,7 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
     Stern: null,
     Bow: null,
     Bridge: null,
+    Materials: null,
   });
 
   const [quantities, setQuantities] = useState<QuantityMap>({
@@ -73,6 +78,7 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
     Stern: 1,
     Bow: 1,
     Bridge: 1,
+    Materials: 0,
   });
 
   const [setCount, setSetCount] = useState<number>(1);
@@ -80,13 +86,14 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
 
   useEffect(() => {
     if (parts.length > 0) {
-      const initialSelections: SelectionMap = { Hull: null, Stern: null, Bow: null, Bridge: null };
+      const initialSelections: SelectionMap = { Hull: null, Stern: null, Bow: null, Bridge: null, Materials: null };
       PART_TYPES.forEach((type: PartType) => {
         const defaultPart = parts.find(
           (p) => p.partType === type && p.classKey === 'shark' && !p.isModified
         );
         initialSelections[type] = defaultPart ?? parts.find((p) => p.partType === type) ?? null;
       });
+      initialSelections.Materials = parts.find((p) => p.partType === 'Materials') ?? null;
       setSelections(initialSelections);
     }
   }, [parts]);
@@ -96,7 +103,8 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
   };
 
   const handleQuantityChange = (type: PartType, qty: number) => {
-    const safeQty = Math.max(1, qty);
+    const minQty = type === 'Materials' ? 0 : 1;
+    const safeQty = Math.max(minQty, qty);
     setQuantities((prev) => ({ ...prev, [type]: safeQty }));
     setSetCount(0);
   };
@@ -104,7 +112,7 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
   const handleSetCountChange = (count: number) => {
     const safeCount = Math.max(1, count);
     setSetCount(safeCount);
-    setQuantities({ Hull: safeCount, Stern: safeCount, Bow: safeCount, Bridge: safeCount });
+    setQuantities(prev => ({ ...prev, Hull: safeCount, Stern: safeCount, Bow: safeCount, Bridge: safeCount }));
   };
 
   const handleSetCountInput = (val: string) => {
@@ -113,7 +121,7 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
   };
 
   const applyPreset = (preset: PresetDefinition) => {
-    const newSelections: SelectionMap = { Hull: null, Stern: null, Bow: null, Bridge: null };
+    const newSelections: SelectionMap = { ...selections };
     PART_TYPES.forEach((type) => {
       const spec = preset.parts[type];
       if (spec) {
@@ -149,7 +157,7 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
     quantities.Stern === quantities.Bow &&
     quantities.Bow === quantities.Bridge;
 
-  const subtotalPrice = PART_TYPES.reduce<number>((sum, type) => {
+  const subtotalPrice = ALL_PART_TYPES.reduce<number>((sum, type) => {
     const part = selections[type];
     return sum + (part ? part.price * quantities[type] : 0);
   }, 0);
@@ -175,23 +183,24 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
   const discountAmount = Math.round(subtotalPrice * (activeDiscount.discountPercent / 100));
   const totalPrice = subtotalPrice - discountAmount;
 
-  const hasOutOfStock = PART_TYPES.some((type) => {
+  const hasOutOfStock = ALL_PART_TYPES.some((type) => {
     const part = selections[type];
-    return part && part.stock === 0;
+    return part && part.stock < quantities[type] && quantities[type] > 0;
   });
 
-  const anySelected = PART_TYPES.some((type) => selections[type] !== null);
+  const anySelected = PART_TYPES.some((type) => selections[type] !== null) || quantities.Materials > 0;
 
   const generateCopyText = (): string => {
     if (!anySelected) return '';
 
-    const lines = PART_TYPES.map((type) => {
+    const lines = ALL_PART_TYPES.map((type) => {
       const part = selections[type];
       if (!part) return null;
       const qty = quantities[type];
+      if (qty === 0 && type === 'Materials') return null;
       const lineTotal = part.price * qty;
       const qtyStr = qty > 1 ? `×${qty}` : '';
-      return `${type}: ${part.name}${qtyStr ? ` ${qtyStr}` : ''} — ${formatGil(lineTotal)}`;
+      return `${type === 'Materials' ? 'Extra' : type}: ${part.name}${qtyStr ? ` ${qtyStr}` : ''} — ${formatGil(lineTotal)}`;
     })
       .filter((line) => line !== null)
       .join('\n');
@@ -331,7 +340,7 @@ Total Price: ${priceText}`;
             placeholder="—"
             onChange={(e) => handleSetCountInput(e.target.value)}
             style={{
-              width: '56px',
+              width: '76px',
               textAlign: 'center',
               background: 'var(--bg-input)',
               border: '1px solid rgba(197,160,89,0.25)',
@@ -377,6 +386,31 @@ Total Price: ${priceText}`;
             ))}
           </div>
 
+          {/* Magitek Repair Materials Selector */}
+          {(() => {
+            const mrmPart = parts.find((p) => p.partType === 'Materials');
+            if (!mrmPart) return null;
+            return (
+              <div className="ff-card-framed" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                   <span style={{ color: 'var(--color-gold)' }}>✦</span>
+                   <h3 style={{ fontSize: '1.15rem', color: 'var(--color-text-title)', margin: 0 }}>Magitek Repair Materials</h3>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div className="gil-price" style={{ fontSize: '1rem' }}>
+                    <span>{formatGil(mrmPart.price).replace(' Gil', '')}</span><span className="gil-coin">G</span> ea.
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Qty:</span>
+                    <button type="button" className="ff-btn-secondary" style={{ padding: '0.15rem 0.4rem', height: '26px' }} onClick={() => handleQuantityChange('Materials', Math.max(0, quantities.Materials - 1))}><Minus size={10} /></button>
+                    <input type="number" min="0" value={quantities.Materials} onChange={(e) => { const n = parseInt(e.target.value, 10); if (!isNaN(n) && n >= 0) handleQuantityChange('Materials', n); }} style={{ width: '64px', textAlign: 'center', background: 'var(--bg-input)', border: '1px solid rgba(197,160,89,0.2)', borderRadius: '4px', color: 'var(--color-text-title)', padding: '0.15rem', height: '26px', boxSizing: 'border-box' }} />
+                    <button type="button" className="ff-btn-secondary" style={{ padding: '0.15rem 0.4rem', height: '26px' }} onClick={() => handleQuantityChange('Materials', quantities.Materials + 1)}><Plus size={10} /></button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Summary card */}
           <div className="ff-card-framed" style={{
             display: 'flex',
@@ -402,28 +436,28 @@ Total Price: ${priceText}`;
                   Selected Components
                 </span>
 
-                {PART_TYPES.map((type: PartType) => {
+                {ALL_PART_TYPES.map((type: PartType) => {
                   const part = selections[type];
                   const qty = quantities[type];
+                  if (!part || (type === 'Materials' && qty === 0)) return null;
+                  
                   return (
                     <div key={type} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>{type}:</span>
+                      <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>{type === 'Materials' ? 'Extra' : type}:</span>
                       <span style={{ fontWeight: '500', color: 'var(--color-text-title)', textAlign: 'right', flex: 1 }}>
-                        {part ? part.className : 'None'}
+                        {part.className}
                       </span>
-                      {part && (
-                        <span style={{
-                          fontSize: '0.72rem',
-                          background: 'rgba(197,160,89,0.12)',
-                          color: 'var(--color-gold)',
-                          borderRadius: '3px',
-                          padding: '0.1rem 0.35rem',
-                          fontWeight: '700',
-                          flexShrink: 0,
-                        }}>
-                          ×{qty}
-                        </span>
-                      )}
+                      <span style={{
+                        fontSize: '0.72rem',
+                        background: 'rgba(197,160,89,0.12)',
+                        color: 'var(--color-gold)',
+                        borderRadius: '3px',
+                        padding: '0.1rem 0.35rem',
+                        fontWeight: '700',
+                        flexShrink: 0,
+                      }}>
+                        ×{qty}
+                      </span>
                     </div>
                   );
                 })}

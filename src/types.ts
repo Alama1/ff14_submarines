@@ -16,7 +16,7 @@ export interface SubmarineClass {
   baseModifiedPrice: number;
 }
 
-export type PartType = 'Hull' | 'Stern' | 'Bow' | 'Bridge';
+export type PartType = 'Hull' | 'Stern' | 'Bow' | 'Bridge' | 'Materials';
 
 export type SelectionMap = Record<PartType, SubmarinePart | null>;
 

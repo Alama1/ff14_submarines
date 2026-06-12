@@ -3,6 +3,7 @@ import { db, isFirebaseConfigured } from './firebase';
 import { SubmarinePart, SubmarineClass, PartType, BulkDiscount } from './types';
 
 export const PART_TYPES: PartType[] = ['Hull', 'Stern', 'Bow', 'Bridge'];
+export const ALL_PART_TYPES: PartType[] = ['Hull', 'Stern', 'Bow', 'Bridge', 'Materials'];
 
 export const CLASSES: SubmarineClass[] = [
   { key: 'shark', name: 'Shark-class', basePrice: 120000, baseModifiedPrice: 650000 },
@@ -41,6 +42,17 @@ export function generateDefaultParts(): SubmarinePart[] {
     });
   });
 
+  parts.push({
+    id: 'materials-magitek',
+    partType: 'Materials',
+    className: 'Magitek Repair Materials',
+    classKey: 'magitek',
+    isModified: false,
+    name: 'Magitek Repair Materials',
+    price: 1500,
+    stock: 99,
+  });
+
   return parts;
 }
 
@@ -57,10 +69,18 @@ export async function loadSubmarineParts(): Promise<SubmarinePart[]> {
       const partsSnapshot = await getDocs(partsCol);
 
       if (!partsSnapshot.empty) {
-        const partsList: SubmarinePart[] = [];
+        let partsList: SubmarinePart[] = [];
         partsSnapshot.forEach((docSnap) => {
           partsList.push({ id: docSnap.id, ...(docSnap.data() as Omit<SubmarinePart, 'id'>) });
         });
+        
+        const defaults = generateDefaultParts();
+        const missing = defaults.filter((d) => !partsList.some((p) => p.id === d.id));
+        if (missing.length > 0) {
+          partsList = [...partsList, ...missing];
+          saveAllParts(partsList).catch(console.error);
+        }
+        
         return sortParts(partsList);
       } else {
         const defaults = generateDefaultParts();
@@ -75,7 +95,14 @@ export async function loadSubmarineParts(): Promise<SubmarinePart[]> {
   const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
   if (stored) {
     try {
-      return sortParts(JSON.parse(stored) as SubmarinePart[]);
+      let partsList = JSON.parse(stored) as SubmarinePart[];
+      const defaults = generateDefaultParts();
+      const missing = defaults.filter((d) => !partsList.some((p) => p.id === d.id));
+      if (missing.length > 0) {
+        partsList = [...partsList, ...missing];
+        saveAllParts(partsList).catch(console.error);
+      }
+      return sortParts(partsList);
     } catch (e) {
       console.error(e);
     }
@@ -132,13 +159,14 @@ export async function saveAllParts(parts: SubmarinePart[]): Promise<boolean> {
 }
 
 function sortParts(parts: SubmarinePart[]): SubmarinePart[] {
-  const typeOrder: Record<string, number> = { Hull: 0, Stern: 1, Bow: 2, Bridge: 3 };
+  const typeOrder: Record<string, number> = { Hull: 0, Stern: 1, Bow: 2, Bridge: 3, Materials: 4 };
   const classOrder: Record<string, number> = {
     shark: 0,
     unkiu: 1,
     whale: 2,
     coelacanth: 3,
     syldra: 4,
+    magitek: 5,
   };
 
   return [...parts].sort((a, b) => {

@@ -1,6 +1,6 @@
 import { useState, useMemo, FormEvent, ChangeEvent, useEffect } from 'react';
 import {
-  PART_TYPES,
+  ALL_PART_TYPES,
   generateDefaultParts,
   savePartUpdate,
   saveAllParts,
@@ -832,7 +832,7 @@ export default function AdminPanel({
                 onChange={(e) => setSelectedType(e.target.value)}
               >
                 <option value="All">All Components</option>
-                {PART_TYPES.map((type) => (
+                {ALL_PART_TYPES.map((type) => (
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
