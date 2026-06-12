@@ -40,8 +40,12 @@ export default function PartSelector({
   };
 
   const handleQtyInput = (val: string) => {
+    if (val === '') {
+      onQuantityChange(0);
+      return;
+    }
     const n = parseInt(val, 10);
-    if (!isNaN(n) && n >= 1) onQuantityChange(n);
+    if (!isNaN(n) && n >= 0) onQuantityChange(n);
   };
 
   const inStock = selectedPart && selectedPart.stock > 0;
@@ -188,17 +192,17 @@ export default function PartSelector({
                 type="button"
                 className="ff-btn-secondary"
                 style={{ padding: '0.15rem 0.4rem', height: '26px', fontSize: '0.75rem' }}
-                onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
+                onClick={() => onQuantityChange(Math.max(0, quantity - 1))}
               >
                 <Minus size={10} />
               </button>
               <input
                 type="number"
-                min="1"
+                min="0"
                 value={quantity}
                 onChange={(e) => handleQtyInput(e.target.value)}
                 style={{
-                  width: '64px',
+                  width: '90px',
                   textAlign: 'center',
                   background: 'var(--bg-input)',
                   border: '1px solid rgba(197,160,89,0.2)',

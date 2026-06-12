@@ -11,6 +11,14 @@ interface SetBuilderProps {
 
 type QuantityMap = Record<PartType, number>;
 
+interface SubmarineBuild {
+  id: string;
+  name: string;
+  selections: SelectionMap;
+  quantities: QuantityMap;
+  setCount: number;
+}
+
 interface PresetDefinition {
   name: string;
   description: string;
@@ -65,28 +73,13 @@ const PRESETS: PresetDefinition[] = [
 ];
 
 export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderProps) {
-  const [selections, setSelections] = useState<SelectionMap>({
-    Hull: null,
-    Stern: null,
-    Bow: null,
-    Bridge: null,
-    Materials: null,
-  });
-
-  const [quantities, setQuantities] = useState<QuantityMap>({
-    Hull: 1,
-    Stern: 1,
-    Bow: 1,
-    Bridge: 1,
-    Materials: 0,
-  });
-
-  const [setCount, setSetCount] = useState<number>(1);
+  const [builds, setBuilds] = useState<SubmarineBuild[]>([]);
+  const [activeBuildId, setActiveBuildId] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
 
-  useEffect(() => {
+  const createDefaultBuild = (id: string, name: string): SubmarineBuild => {
+    const initialSelections: SelectionMap = { Hull: null, Stern: null, Bow: null, Bridge: null, Materials: null };
     if (parts.length > 0) {
-      const initialSelections: SelectionMap = { Hull: null, Stern: null, Bow: null, Bridge: null, Materials: null };
       PART_TYPES.forEach((type: PartType) => {
         const defaultPart = parts.find(
           (p) => p.partType === type && p.classKey === 'shark' && !p.isModified
@@ -94,46 +87,139 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
         initialSelections[type] = defaultPart ?? parts.find((p) => p.partType === type) ?? null;
       });
       initialSelections.Materials = parts.find((p) => p.partType === 'Materials') ?? null;
-      setSelections(initialSelections);
+    }
+    return {
+      id,
+      name,
+      selections: initialSelections,
+      quantities: {
+        Hull: 1,
+        Stern: 1,
+        Bow: 1,
+        Bridge: 1,
+        Materials: 0,
+      },
+      setCount: 1,
+    };
+  };
+
+  useEffect(() => {
+    if (parts.length > 0 && builds.length === 0) {
+      const defaultBuild = createDefaultBuild('1', 'Build 1');
+      setBuilds([defaultBuild]);
+      setActiveBuildId('1');
     }
   }, [parts]);
 
+  const activeBuild = builds.find((b) => b.id === activeBuildId) || createDefaultBuild('temp', 'Temp');
+  const selections = activeBuild.selections;
+  const quantities = activeBuild.quantities;
+  const setCount = activeBuild.setCount;
+
+  const handleAddBuild = () => {
+    const nextId = (builds.reduce((max, b) => Math.max(max, parseInt(b.id, 10) || 0), 0) + 1).toString();
+    const newBuild = createDefaultBuild(nextId, `Build ${nextId}`);
+    setBuilds([...builds, newBuild]);
+    setActiveBuildId(nextId);
+  };
+
+  const handleRemoveBuild = (id: string) => {
+    if (builds.length <= 1) return;
+    const activeIndex = builds.findIndex((b) => b.id === id);
+    const newBuilds = builds.filter((b) => b.id !== id);
+    setBuilds(newBuilds);
+    if (activeBuildId === id) {
+      const newActiveIndex = Math.max(0, activeIndex - 1);
+      setActiveBuildId(newBuilds[newActiveIndex].id);
+    }
+  };
+
+  const handleRenameBuild = (id: string, newName: string) => {
+    setBuilds((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, name: newName } : b))
+    );
+  };
+
   const handleSelect = (type: PartType, part: SubmarinePart | null) => {
-    setSelections((prev) => ({ ...prev, [type]: part }));
+    setBuilds((prev) =>
+      prev.map((b) =>
+        b.id === activeBuildId
+          ? { ...b, selections: { ...b.selections, [type]: part } }
+          : b
+      )
+    );
   };
 
   const handleQuantityChange = (type: PartType, qty: number) => {
-    const minQty = type === 'Materials' ? 0 : 1;
+    const minQty = 0;
     const safeQty = Math.max(minQty, qty);
-    setQuantities((prev) => ({ ...prev, [type]: safeQty }));
-    setSetCount(0);
+    setBuilds((prev) =>
+      prev.map((b) => {
+        if (b.id === activeBuildId) {
+          const newQuantities = { ...b.quantities, [type]: safeQty };
+          return {
+            ...b,
+            quantities: newQuantities,
+            setCount: 0,
+          };
+        }
+        return b;
+      })
+    );
   };
 
   const handleSetCountChange = (count: number) => {
-    const safeCount = Math.max(1, count);
-    setSetCount(safeCount);
-    setQuantities(prev => ({ ...prev, Hull: safeCount, Stern: safeCount, Bow: safeCount, Bridge: safeCount }));
+    const safeCount = Math.max(0, count);
+    setBuilds((prev) =>
+      prev.map((b) => {
+        if (b.id === activeBuildId) {
+          return {
+            ...b,
+            setCount: safeCount,
+            quantities: {
+              ...b.quantities,
+              Hull: safeCount,
+              Stern: safeCount,
+              Bow: safeCount,
+              Bridge: safeCount,
+            },
+          };
+        }
+        return b;
+      })
+    );
   };
 
   const handleSetCountInput = (val: string) => {
+    if (val === '') {
+      handleSetCountChange(0);
+      return;
+    }
     const n = parseInt(val, 10);
-    if (!isNaN(n) && n >= 1) handleSetCountChange(n);
+    if (!isNaN(n) && n >= 0) handleSetCountChange(n);
   };
 
   const applyPreset = (preset: PresetDefinition) => {
-    const newSelections: SelectionMap = { ...selections };
-    PART_TYPES.forEach((type) => {
-      const spec = preset.parts[type];
-      if (spec) {
-        const match = parts.find(
-          (p) => p.partType === type && p.classKey === spec.classKey && p.isModified === spec.isModified
-        );
-        newSelections[type] = match ?? null;
-      } else {
-        newSelections[type] = null;
-      }
-    });
-    setSelections(newSelections);
+    setBuilds((prev) =>
+      prev.map((b) => {
+        if (b.id === activeBuildId) {
+          const newSelections = { ...b.selections };
+          PART_TYPES.forEach((type) => {
+            const spec = preset.parts[type];
+            if (spec) {
+              const match = parts.find(
+                (p) => p.partType === type && p.classKey === spec.classKey && p.isModified === spec.isModified
+              );
+              newSelections[type] = match ?? null;
+            } else {
+              newSelections[type] = null;
+            }
+          });
+          return { ...b, selections: newSelections };
+        }
+        return b;
+      })
+    );
   };
 
   const getActivePreset = (): string | null => {
@@ -157,64 +243,95 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
     quantities.Stern === quantities.Bow &&
     quantities.Bow === quantities.Bridge;
 
-  const subtotalPrice = ALL_PART_TYPES.reduce<number>((sum, type) => {
-    const part = selections[type];
-    return sum + (part ? part.price * quantities[type] : 0);
-  }, 0);
+  const getBuildSubtotal = (build: SubmarineBuild) => {
+    return ALL_PART_TYPES.reduce<number>((sum, type) => {
+      const part = build.selections[type];
+      return sum + (part ? part.price * build.quantities[type] : 0);
+    }, 0);
+  };
 
-  const selectedTypes = PART_TYPES.filter((type) => selections[type] !== null);
-  const completeSets = selectedTypes.length > 0
-    ? Math.min(...selectedTypes.map((type) => quantities[type]))
-    : 0;
+  const overallSubtotal = builds.reduce((sum, b) => sum + getBuildSubtotal(b), 0);
 
-  const omittedCount = 4 - selectedTypes.length;
-  const isPartOmitted = omittedCount > 0 && selectedTypes.length > 0;
-  // Each omitted part adds +25% to the required sets threshold
-  const omissionMultiplier = 1 + omittedCount * 0.25;
+  const buildsInfo = builds.map((b) => {
+    const selTypes = PART_TYPES.filter((type) => b.selections[type] !== null);
+    const compSets = selTypes.length > 0
+      ? Math.min(...selTypes.map((type) => b.quantities[type]))
+      : 0;
+    const oCount = 4 - selTypes.length;
+    const oMultiplier = 1 + oCount * 0.25;
+    return {
+      compSets,
+      oCount,
+      oMultiplier,
+    };
+  });
+
+  const totalCompleteSets = buildsInfo.reduce((sum, info) => sum + info.compSets, 0);
+  const activeOMultiplier = buildsInfo.filter(info => info.compSets > 0).reduce((max, info) => Math.max(max, info.oMultiplier), 1);
+  const anyOmitted = buildsInfo.some(info => info.compSets > 0 && info.oCount > 0);
+  const maxOmittedCount = buildsInfo.filter(info => info.compSets > 0).reduce((max, info) => Math.max(max, info.oCount), 0);
 
   const getRequiredSetsForDiscount = (d: BulkDiscount) => {
-    return isPartOmitted ? Math.ceil(d.threshold * omissionMultiplier) : d.threshold;
+    return anyOmitted ? Math.ceil(d.threshold * activeOMultiplier) : d.threshold;
   };
 
   const activeDiscount = discounts
-    .filter((d) => completeSets >= getRequiredSetsForDiscount(d))
+    .filter((d) => totalCompleteSets >= getRequiredSetsForDiscount(d))
     .reduce((max, d) => (d.discountPercent > max.discountPercent ? d : max), { threshold: 0, discountPercent: 0 });
 
-  const discountAmount = Math.round(subtotalPrice * (activeDiscount.discountPercent / 100));
-  const totalPrice = subtotalPrice - discountAmount;
+  const discountAmount = Math.round(overallSubtotal * (activeDiscount.discountPercent / 100));
+  const totalPrice = overallSubtotal - discountAmount;
 
-  const hasOutOfStock = ALL_PART_TYPES.some((type) => {
-    const part = selections[type];
-    return part && part.stock < quantities[type] && quantities[type] > 0;
-  });
+  const hasOutOfStock = builds.some((b) =>
+    ALL_PART_TYPES.some((type) => {
+      const part = b.selections[type];
+      return part && part.stock < b.quantities[type] && b.quantities[type] > 0;
+    })
+  );
 
-  const anySelected = PART_TYPES.some((type) => selections[type] !== null) || quantities.Materials > 0;
+  const anySelected = builds.some((b) =>
+    PART_TYPES.some((type) => b.selections[type] !== null && b.quantities[type] > 0) || b.quantities.Materials > 0
+  );
 
   const generateCopyText = (): string => {
-    if (!anySelected) return '';
+    const activeBuildsWithItems = builds.filter((b) =>
+      ALL_PART_TYPES.some((type) => b.selections[type] !== null && b.quantities[type] > 0)
+    );
+    if (activeBuildsWithItems.length === 0) return '';
 
-    const lines = ALL_PART_TYPES.map((type) => {
-      const part = selections[type];
-      if (!part) return null;
-      const qty = quantities[type];
-      if (qty === 0 && type === 'Materials') return null;
-      const lineTotal = part.price * qty;
-      const qtyStr = qty > 1 ? `×${qty}` : '';
-      return `${type === 'Materials' ? 'Extra' : type}: ${part.name}${qtyStr ? ` ${qtyStr}` : ''} — ${formatGil(lineTotal)}`;
-    })
-      .filter((line) => line !== null)
-      .join('\n');
+    const buildsSections = activeBuildsWithItems.map((build, index) => {
+      const lines = ALL_PART_TYPES.map((type) => {
+        const part = build.selections[type];
+        if (!part) return null;
+        const qty = build.quantities[type];
+        if (qty === 0) return null;
+        const lineTotal = part.price * qty;
+        const qtyStr = qty > 1 ? `×${qty}` : '';
+        return `${type === 'Materials' ? 'Extra' : type}: ${part.name}${qtyStr ? ` ${qtyStr}` : ''} — ${formatGil(lineTotal)}`;
+      })
+        .filter((line) => line !== null)
+        .join('\n');
 
-    const setLabel = allSameQty && setCount > 1 ? `\nSets: ×${setCount}` : '';
-    const thresholdUsed = isPartOmitted ? Math.ceil(activeDiscount.threshold * omissionMultiplier) : activeDiscount.threshold;
+      const buildSameQty =
+        build.quantities.Hull === build.quantities.Stern &&
+        build.quantities.Stern === build.quantities.Bow &&
+        build.quantities.Bow === build.quantities.Bridge;
+      const setLabel = buildSameQty && build.setCount > 1 ? `\nSets: ×${build.setCount}` : '';
+
+      return `[${build.name || `Build ${index + 1}`}]\n${lines}${setLabel}`;
+    }).join('\n\n');
+
+    const thresholdUsed = anyOmitted ? Math.ceil(activeDiscount.threshold * activeOMultiplier) : activeDiscount.threshold;
     const discountLabel = activeDiscount.discountPercent > 0
-      ? `\nSubtotal: ${formatGil(subtotalPrice)}\nBulk Discount (${activeDiscount.discountPercent}% for ${thresholdUsed}+ sets${isPartOmitted ? ` [${omittedCount} part${omittedCount > 1 ? 's' : ''} omitted adj.]` : ''}): -${formatGil(discountAmount)}`
+      ? `\nSubtotal: ${formatGil(overallSubtotal)}\nBulk Discount (${activeDiscount.discountPercent}% for ${thresholdUsed}+ sets${anyOmitted ? ` [${maxOmittedCount} part${maxOmittedCount > 1 ? 's' : ''} omitted adj.]` : ''}): -${formatGil(discountAmount)}`
       : '';
 
-    const priceText = activeDiscount.discountPercent > 0 ? formatGil(totalPrice) : formatGil(subtotalPrice);
+    const priceText = activeDiscount.discountPercent > 0 ? formatGil(totalPrice) : formatGil(overallSubtotal);
 
     return `--- FFXIV Submarine Order Request ---
-${lines}${setLabel}
+
+${buildsSections}
+
 ------------------------------------${discountLabel}
 Total Price: ${priceText}`;
   };
@@ -231,13 +348,147 @@ Total Price: ${priceText}`;
 
   return (
     <div className="set-builder fade-in">
-      <div className="builder-header" style={{ marginBottom: '1.5rem', textAlign: 'left' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span>✦</span> Submarine Set Builder
-        </h2>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-          Choose components and set quantities per part, or use the set multiplier to order multiple identical builds at once.
-        </p>
+      {/* Build/Set tabs navigation */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        marginBottom: '1.5rem',
+        borderBottom: '1px solid rgba(197, 160, 89, 0.15)',
+        paddingBottom: '0.75rem',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {builds.map((b) => {
+            const isActive = b.id === activeBuildId;
+            return (
+              <div
+                key={b.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: isActive ? 'linear-gradient(135deg, #1d263b 0%, #151b27 100%)' : 'rgba(18, 24, 36, 0.6)',
+                  border: `1px solid ${isActive ? 'var(--color-gold)' : 'var(--color-gold-dark)'}`,
+                  borderRadius: '4px',
+                  boxShadow: isActive ? '0 0 10px var(--color-gold-glow)' : 'none',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  height: '38px',
+                }}
+              >
+                {isActive && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '2px',
+                    background: 'var(--color-gold)',
+                  }} />
+                )}
+                <button
+                  type="button"
+                  onClick={() => setActiveBuildId(b.id)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: isActive ? 'var(--color-gold-light)' : 'var(--color-text-muted)',
+                    padding: '0 1rem',
+                    fontSize: '0.88rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    height: '100%',
+                    outline: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  {b.name}
+                </button>
+              </div>
+            );
+          })}
+          
+          <button
+            type="button"
+            className="ff-btn-secondary"
+            onClick={handleAddBuild}
+            style={{
+              padding: '0 0.8rem',
+              height: '38px',
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+            }}
+          >
+            <Plus size={14} /> Add Another Set
+          </button>
+        </div>
+
+        {builds.length > 1 && (
+          <button
+            type="button"
+            className="ff-btn-secondary"
+            onClick={() => handleRemoveBuild(activeBuildId)}
+            style={{
+              padding: '0 0.8rem',
+              height: '38px',
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              color: 'var(--color-error)',
+              borderColor: 'rgba(239, 68, 68, 0.3)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+              e.currentTarget.style.borderColor = 'var(--color-error)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+            }}
+          >
+            Remove Set
+          </button>
+        )}
+      </div>
+
+      <div className="builder-header" style={{ marginBottom: '1.5rem', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ flex: '1', minWidth: '280px' }}>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span>✦</span> Submarine Set Builder
+          </h2>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
+            Choose components and set quantities per part, or use the set multiplier to order multiple identical builds at once.
+          </p>
+        </div>
+
+        {/* Name editor for the active build */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '200px' }}>
+          <label style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-gold-light)' }}>
+            Set / Build Name
+          </label>
+          <input
+            type="text"
+            value={activeBuild.name}
+            onChange={(e) => handleRenameBuild(activeBuildId, e.target.value)}
+            placeholder="e.g. Speed Set"
+            style={{
+              background: 'var(--bg-input)',
+              border: '1px solid rgba(197,160,89,0.25)',
+              borderRadius: '4px',
+              color: 'var(--color-text-title)',
+              fontSize: '0.9rem',
+              padding: '0.4rem 0.6rem',
+              outline: 'none',
+              width: '100%',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
       </div>
 
       {/* Preset selections */}
@@ -252,7 +503,7 @@ Total Price: ${priceText}`;
       }}>
         <div style={{ textAlign: 'left' }}>
           <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-gold-light)', marginBottom: '0.2rem' }}>
-            Quick Set Presets
+            Quick Set Presets (Active Set Only)
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
             Select a common configuration to instantly pre-fill components
@@ -317,10 +568,10 @@ Total Price: ${priceText}`;
       }}>
         <div style={{ textAlign: 'left' }}>
           <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-gold-light)', marginBottom: '0.2rem' }}>
-            Number of Sets
+            Number of Sets (Active Set Only)
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-            Sets the same quantity for all 4 parts at once
+            Sets the same quantity for all 4 parts of the active set at once
           </div>
         </div>
 
@@ -329,18 +580,18 @@ Total Price: ${priceText}`;
             type="button"
             className="ff-btn-secondary"
             style={{ padding: '0.3rem 0.6rem', height: '34px' }}
-            onClick={() => handleSetCountChange(Math.max(1, (allSameQty ? quantities.Hull : 1) - 1))}
+            onClick={() => handleSetCountChange(Math.max(0, (allSameQty ? quantities.Hull : 1) - 1))}
           >
             <Minus size={12} />
           </button>
           <input
             type="number"
-            min="1"
-            value={allSameQty && setCount > 0 ? setCount : ''}
+            min="0"
+            value={allSameQty && setCount > 0 ? setCount : (setCount === 0 ? 0 : '')}
             placeholder="—"
             onChange={(e) => handleSetCountInput(e.target.value)}
             style={{
-              width: '76px',
+              width: '90px',
               textAlign: 'center',
               background: 'var(--bg-input)',
               border: '1px solid rgba(197,160,89,0.25)',
@@ -403,7 +654,7 @@ Total Price: ${priceText}`;
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Qty:</span>
                     <button type="button" className="ff-btn-secondary" style={{ padding: '0.15rem 0.4rem', height: '26px' }} onClick={() => handleQuantityChange('Materials', Math.max(0, quantities.Materials - 1))}><Minus size={10} /></button>
-                    <input type="number" min="0" value={quantities.Materials} onChange={(e) => { const n = parseInt(e.target.value, 10); if (!isNaN(n) && n >= 0) handleQuantityChange('Materials', n); }} style={{ width: '64px', textAlign: 'center', background: 'var(--bg-input)', border: '1px solid rgba(197,160,89,0.2)', borderRadius: '4px', color: 'var(--color-text-title)', padding: '0.15rem', height: '26px', boxSizing: 'border-box' }} />
+                    <input type="number" min="0" value={quantities.Materials} onChange={(e) => { const n = parseInt(e.target.value, 10); if (!isNaN(n) && n >= 0) handleQuantityChange('Materials', n); }} style={{ width: '90px', textAlign: 'center', background: 'var(--bg-input)', border: '1px solid rgba(197,160,89,0.2)', borderRadius: '4px', color: 'var(--color-text-title)', padding: '0.15rem', height: '26px', boxSizing: 'border-box' }} />
                     <button type="button" className="ff-btn-secondary" style={{ padding: '0.15rem 0.4rem', height: '26px' }} onClick={() => handleQuantityChange('Materials', quantities.Materials + 1)}><Plus size={10} /></button>
                   </div>
                 </div>
@@ -421,43 +672,64 @@ Total Price: ${priceText}`;
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.75rem',
+              justifyContent: 'space-between',
               borderBottom: '1px solid rgba(197, 160, 89, 0.15)',
               paddingBottom: '0.75rem',
             }}>
-              <Anchor style={{ color: 'var(--color-gold)' }} />
-              <h3 style={{ fontSize: '1.2rem', color: 'var(--color-text-title)' }}>Order Summary</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Anchor style={{ color: 'var(--color-gold)' }} />
+                <h3 style={{ fontSize: '1.2rem', color: 'var(--color-text-title)' }}>Order Summary</h3>
+              </div>
+              {builds.length > 1 && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                  {builds.length} Configured Sets
+                </span>
+              )}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', textAlign: 'left' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', textAlign: 'left' }}>
                 <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05rem', color: 'var(--color-gold-light)' }}>
                   Selected Components
                 </span>
 
-                {ALL_PART_TYPES.map((type: PartType) => {
-                  const part = selections[type];
-                  const qty = quantities[type];
-                  if (!part || (type === 'Materials' && qty === 0)) return null;
+                {builds.map((build, index) => {
+                  const buildSelections = build.selections;
+                  const buildQuantities = build.quantities;
+                  const hasParts = ALL_PART_TYPES.some(type => buildSelections[type] !== null && buildQuantities[type] > 0);
+                  if (!hasParts) return null;
                   
                   return (
-                    <div key={type} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>{type === 'Materials' ? 'Extra' : type}:</span>
-                      <span style={{ fontWeight: '500', color: 'var(--color-text-title)', textAlign: 'right', flex: 1 }}>
-                        {part.className}
-                      </span>
-                      <span style={{
-                        fontSize: '0.72rem',
-                        background: 'rgba(197,160,89,0.12)',
-                        color: 'var(--color-gold)',
-                        borderRadius: '3px',
-                        padding: '0.1rem 0.35rem',
-                        fontWeight: '700',
-                        flexShrink: 0,
-                      }}>
-                        ×{qty}
-                      </span>
+                    <div key={build.id} style={{ marginBottom: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-gold)', borderBottom: '1px solid rgba(197, 160, 89, 0.1)', paddingBottom: '0.2rem' }}>
+                        {build.name || `Build ${index + 1}`}
+                      </div>
+                      {ALL_PART_TYPES.map((type: PartType) => {
+                        const part = buildSelections[type];
+                        const qty = buildQuantities[type];
+                        if (!part || qty === 0) return null;
+                        
+                        return (
+                          <div key={type} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>{type === 'Materials' ? 'Extra' : type}:</span>
+                            <span style={{ fontWeight: '500', color: 'var(--color-text-title)', textAlign: 'right', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {part.className}
+                            </span>
+                            <span style={{
+                              fontSize: '0.68rem',
+                              background: 'rgba(197,160,89,0.12)',
+                              color: 'var(--color-gold)',
+                              borderRadius: '3px',
+                              padding: '0.05rem 0.25rem',
+                              fontWeight: '700',
+                              flexShrink: 0,
+                            }}>
+                              ×{qty}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}
@@ -478,7 +750,7 @@ Total Price: ${priceText}`;
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.4rem' }}>
                       <span style={{ color: 'var(--color-text-muted)' }}>Subtotal:</span>
                       <span className="gil-price" style={{ fontSize: '0.92rem' }}>
-                        <span>{new Intl.NumberFormat('en-US').format(subtotalPrice)}</span>
+                        <span>{new Intl.NumberFormat('en-US').format(overallSubtotal)}</span>
                         <span className="gil-coin" style={{ width: '13px', height: '13px', fontSize: '8px' }}>G</span>
                       </span>
                     </div>
@@ -499,9 +771,9 @@ Total Price: ${priceText}`;
                     <span>{new Intl.NumberFormat('en-US').format(totalPrice)}</span>
                     <span className="gil-coin" style={{ width: '22px', height: '22px', fontSize: '12px' }}>G</span>
                   </div>
-                  {completeSets > 1 && (
+                  {totalCompleteSets > 0 && (
                     <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                      {completeSets} full set{completeSets > 1 ? 's' : ''} ordered
+                      {totalCompleteSets} full set{totalCompleteSets > 1 ? 's' : ''} ordered
                     </span>
                   )}
                 </div>
@@ -535,7 +807,7 @@ Total Price: ${priceText}`;
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', fontSize: '0.72rem' }}>
                   {discounts.map((d) => {
-                    const requiredSets = isPartOmitted ? Math.ceil(d.threshold * omissionMultiplier) : d.threshold;
+                    const requiredSets = anyOmitted ? Math.ceil(d.threshold * activeOMultiplier) : d.threshold;
                     const isCurrent = activeDiscount.threshold === d.threshold;
                     return (
                       <div
@@ -559,7 +831,7 @@ Total Price: ${priceText}`;
                     );
                   })}
                 </div>
-                {isPartOmitted && (
+                {anyOmitted && (
                   <div style={{
                     fontSize: '0.68rem',
                     color: 'var(--color-warning)',
@@ -571,7 +843,7 @@ Total Price: ${priceText}`;
                     marginTop: '0.1rem'
                   }}>
                     <Info size={11} style={{ flexShrink: 0 }} />
-                    <span>{omittedCount} part{omittedCount > 1 ? 's' : ''} omitted — thresholds increased by {Math.round(omissionMultiplier * 100) - 100}% (+25% per omitted part).</span>
+                    <span>Thresholds increased by {Math.round(activeOMultiplier * 100) - 100}% due to omitted parts in active sets.</span>
                   </div>
                 )}
               </div>
