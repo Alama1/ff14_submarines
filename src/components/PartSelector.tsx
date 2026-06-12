@@ -179,19 +179,20 @@ export default function PartSelector({
 
           <div style={{
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
+            flexDirection: 'column',
+            gap: '0.6rem',
             background: 'rgba(197, 160, 89, 0.04)',
-            padding: '0.5rem 0.8rem',
+            padding: '0.75rem 0.8rem',
             borderRadius: '0 0 4px 4px',
             border: '1px solid rgba(197, 160, 89, 0.12)',
+            alignItems: 'stretch',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Qty:</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: '0.25rem' }}>Qty:</span>
               <button
                 type="button"
                 className="ff-btn-secondary"
-                style={{ padding: '0.15rem 0.4rem', height: '26px', fontSize: '0.75rem' }}
+                style={{ padding: '0.15rem 0.4rem', height: '26px', fontSize: '0.75rem', width: '26px' }}
                 onClick={() => onQuantityChange(Math.max(0, quantity - 1))}
               >
                 <Minus size={10} />
@@ -217,7 +218,7 @@ export default function PartSelector({
               <button
                 type="button"
                 className="ff-btn-secondary"
-                style={{ padding: '0.15rem 0.4rem', height: '26px', fontSize: '0.75rem' }}
+                style={{ padding: '0.15rem 0.4rem', height: '26px', fontSize: '0.75rem', width: '26px' }}
                 onClick={() => onQuantityChange(quantity + 1)}
               >
                 <Plus size={10} />
@@ -225,9 +226,19 @@ export default function PartSelector({
             </div>
 
             {quantity > 1 && (
-              <div className="gil-price" style={{ fontSize: '0.85rem' }}>
-                <span style={{ color: 'var(--color-gold-light)' }}>{new Intl.NumberFormat('en-US').format(linePrice)}</span>
-                <span className="gil-coin" style={{ width: '14px', height: '14px', fontSize: '8px' }}>G</span>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderTop: '1px solid rgba(197, 160, 89, 0.1)',
+                paddingTop: '0.5rem',
+                marginTop: '0.1rem'
+              }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Subtotal:</span>
+                <div className="gil-price" style={{ fontSize: '0.88rem' }}>
+                  <span style={{ color: 'var(--color-gold-light)' }}>{new Intl.NumberFormat('en-US').format(linePrice)}</span>
+                  <span className="gil-coin" style={{ width: '14px', height: '14px', fontSize: '8px' }}>G</span>
+                </div>
               </div>
             )}
           </div>

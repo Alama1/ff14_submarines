@@ -252,34 +252,26 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
 
   const overallSubtotal = builds.reduce((sum, b) => sum + getBuildSubtotal(b), 0);
 
-  const buildsInfo = builds.map((b) => {
-    const selTypes = PART_TYPES.filter((type) => b.selections[type] !== null);
-    const compSets = selTypes.length > 0
-      ? Math.min(...selTypes.map((type) => b.quantities[type]))
-      : 0;
-    const oCount = 4 - selTypes.length;
-    const oMultiplier = 1 + oCount * 0.25;
-    return {
-      compSets,
-      oCount,
-      oMultiplier,
-    };
-  });
+  const totalParts = builds.reduce((sum, b) => {
+    return sum + PART_TYPES.reduce((partSum, type) => {
+      const part = b.selections[type];
+      return partSum + (part ? Number(b.quantities[type]) || 0 : 0);
+    }, 0);
+  }, 0);
 
-  const totalCompleteSets = buildsInfo.reduce((sum, info) => sum + info.compSets, 0);
-  const activeOMultiplier = buildsInfo.filter(info => info.compSets > 0).reduce((max, info) => Math.max(max, info.oMultiplier), 1);
-  const anyOmitted = buildsInfo.some(info => info.compSets > 0 && info.oCount > 0);
-  const maxOmittedCount = buildsInfo.filter(info => info.compSets > 0).reduce((max, info) => Math.max(max, info.oCount), 0);
-
-  const getRequiredSetsForDiscount = (d: BulkDiscount) => {
-    return anyOmitted ? Math.ceil(d.threshold * activeOMultiplier) : d.threshold;
+  const getRequiredPartsForDiscount = (d: { threshold: number | string }) => {
+    return (Number(d.threshold) || 0) * 4;
   };
 
   const activeDiscount = discounts
-    .filter((d) => totalCompleteSets >= getRequiredSetsForDiscount(d))
-    .reduce((max, d) => (d.discountPercent > max.discountPercent ? d : max), { threshold: 0, discountPercent: 0 });
+    .filter((d) => totalParts >= getRequiredPartsForDiscount(d))
+    .reduce((max, d) => {
+      const pct = Number(d.discountPercent) || 0;
+      const maxPct = Number(max.discountPercent) || 0;
+      return pct > maxPct ? d : max;
+    }, { threshold: 0, discountPercent: 0 });
 
-  const discountAmount = Math.round(overallSubtotal * (activeDiscount.discountPercent / 100));
+  const discountAmount = Math.round(overallSubtotal * (Number(activeDiscount.discountPercent) / 100));
   const totalPrice = overallSubtotal - discountAmount;
 
   const hasOutOfStock = builds.some((b) =>
@@ -321,9 +313,9 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
       return `[${build.name || `Build ${index + 1}`}]\n${lines}${setLabel}`;
     }).join('\n\n');
 
-    const thresholdUsed = anyOmitted ? Math.ceil(activeDiscount.threshold * activeOMultiplier) : activeDiscount.threshold;
+    const thresholdParts = getRequiredPartsForDiscount(activeDiscount);
     const discountLabel = activeDiscount.discountPercent > 0
-      ? `\nSubtotal: ${formatGil(overallSubtotal)}\nBulk Discount (${activeDiscount.discountPercent}% for ${thresholdUsed}+ sets${anyOmitted ? ` [${maxOmittedCount} part${maxOmittedCount > 1 ? 's' : ''} omitted adj.]` : ''}): -${formatGil(discountAmount)}`
+      ? `\nSubtotal: ${formatGil(overallSubtotal)}\nBulk Discount (${activeDiscount.discountPercent}% for ${thresholdParts}+ parts): -${formatGil(discountAmount)}`
       : '';
 
     const priceText = activeDiscount.discountPercent > 0 ? formatGil(totalPrice) : formatGil(overallSubtotal);
@@ -623,7 +615,7 @@ Total Price: ${priceText}`;
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }} className="builder-grid-layout">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }} className="builder-columns-wrapper">
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
             {PART_TYPES.map((type: PartType) => (
               <PartSelector
                 key={type}
@@ -771,9 +763,9 @@ Total Price: ${priceText}`;
                     <span>{new Intl.NumberFormat('en-US').format(totalPrice)}</span>
                     <span className="gil-coin" style={{ width: '22px', height: '22px', fontSize: '12px' }}>G</span>
                   </div>
-                  {totalCompleteSets > 0 && (
+                  {totalParts > 0 && (
                     <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                      {totalCompleteSets} full set{totalCompleteSets > 1 ? 's' : ''} ordered
+                      {totalParts} part{totalParts > 1 ? 's' : ''} ordered
                     </span>
                   )}
                 </div>
@@ -800,15 +792,22 @@ Total Price: ${priceText}`;
                   color: 'var(--color-gold-light)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.3rem',
-                  fontWeight: '600'
+                  justifyContent: 'space-between',
+                  fontWeight: '600',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
                 }}>
-                  <Tag size={12} /> Bulk Discount Guide
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Tag size={12} /> Bulk Discount Guide
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'none', letterSpacing: 'normal' }}>
+                    Current Parts Count: <strong style={{ color: 'var(--color-gold)', fontSize: '0.8rem' }}>{totalParts}</strong>
+                  </span>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', fontSize: '0.72rem' }}>
                   {discounts.map((d) => {
-                    const requiredSets = anyOmitted ? Math.ceil(d.threshold * activeOMultiplier) : d.threshold;
-                    const isCurrent = activeDiscount.threshold === d.threshold;
+                    const requiredParts = getRequiredPartsForDiscount(d);
+                    const isCurrent = Number(activeDiscount.threshold) === Number(d.threshold);
                     return (
                       <div
                         key={d.id}
@@ -824,28 +823,13 @@ Total Price: ${priceText}`;
                           gap: '0.25rem',
                         }}
                       >
-                        <span>{requiredSets}+ Sets:</span>
+                        <span>{requiredParts}+ Parts:</span>
                         <span style={{ color: isCurrent ? 'var(--color-success)' : 'var(--color-text-title)' }}>{d.discountPercent}% Off</span>
                         {isCurrent && <span style={{ fontSize: '0.65rem' }}>★ Active</span>}
                       </div>
                     );
                   })}
                 </div>
-                {anyOmitted && (
-                  <div style={{
-                    fontSize: '0.68rem',
-                    color: 'var(--color-warning)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.3rem',
-                    borderTop: '1px solid rgba(255, 255, 255, 0.03)',
-                    paddingTop: '0.4rem',
-                    marginTop: '0.1rem'
-                  }}>
-                    <Info size={11} style={{ flexShrink: 0 }} />
-                    <span>Thresholds increased by {Math.round(activeOMultiplier * 100) - 100}% due to omitted parts in active sets.</span>
-                  </div>
-                )}
               </div>
             )}
 
