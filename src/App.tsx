@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { loadSubmarineParts, loadBulkDiscounts } from './SubmarineData';
-import StockCatalog from './components/StockCatalog';
+import ForCrafters from './components/ForCrafters';
 import SetBuilder from './components/SetBuilder';
 import AdminPanel from './components/AdminPanel';
-import { Anchor, Hammer, Lock, RefreshCw, Layers } from 'lucide-react';
+import { Anchor, Hammer, Lock, RefreshCw, Wrench } from 'lucide-react';
 import { SubmarinePart, BulkDiscount } from './types';
 import './App.css';
  
@@ -14,7 +14,7 @@ function App() {
   const [parts, setParts] = useState<SubmarinePart[]>([]);
   const [discounts, setDiscounts] = useState<BulkDiscount[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'catalog' | 'builder' | 'admin'>('catalog');
+  const [activeTab, setActiveTab] = useState<'builder' | 'crafters' | 'admin'>('builder');
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
  
   const fetchData = async (): Promise<void> => {
@@ -85,19 +85,19 @@ function App() {
       <nav className="tab-navigation">
         <button
           type="button"
-          className={`tab-btn ${activeTab === 'catalog' ? 'active' : ''}`}
-          onClick={() => setActiveTab('catalog')}
-        >
-          <Layers size={14} style={{ marginRight: '0.4rem', verticalAlign: 'middle' }} />
-          Stock Catalog
-        </button>
-        <button
-          type="button"
           className={`tab-btn ${activeTab === 'builder' ? 'active' : ''}`}
           onClick={() => setActiveTab('builder')}
         >
           <Hammer size={14} style={{ marginRight: '0.4rem', verticalAlign: 'middle' }} />
           Set Builder
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === 'crafters' ? 'active' : ''}`}
+          onClick={() => setActiveTab('crafters')}
+        >
+          <Wrench size={14} style={{ marginRight: '0.4rem', verticalAlign: 'middle' }} />
+          For crafters
         </button>
         <button
           type="button"
@@ -126,8 +126,8 @@ function App() {
           </div>
         ) : (
           <>
-            {activeTab === 'catalog' && <StockCatalog parts={parts} />}
             {activeTab === 'builder' && <SetBuilder parts={parts} discounts={discounts} />}
+            {activeTab === 'crafters' && <ForCrafters />}
             {activeTab === 'admin' && (
               <AdminPanel
                 parts={parts}
