@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Wrench, RefreshCw, Hammer, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Wrench, RefreshCw, Hammer, AlertTriangle, ExternalLink, MessageSquare } from 'lucide-react';
 import { loadActiveCrafts } from '../SubmarineData';
 import { ActiveCraft } from '../types';
 
@@ -157,6 +157,59 @@ export default function ForCrafters() {
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
             {loading ? 'Loading…' : 'Refresh'}
           </button>
+        </div>
+      </div>
+
+      {/* Discord CTA Banner */}
+      <div className="ff-card-framed" style={{
+        padding: '1.25rem 1.5rem',
+        background: 'linear-gradient(135deg, rgba(197,160,89,0.06) 0%, rgba(21,31,51,0.4) 100%)',
+        borderLeft: '4px solid var(--color-gold)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        borderRadius: '4px',
+        textAlign: 'left'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+          <div style={{
+            background: 'rgba(197, 160, 89, 0.12)',
+            padding: '0.6rem',
+            borderRadius: '50%',
+            color: 'var(--color-gold)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <MessageSquare size={20} />
+          </div>
+          <div>
+            <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--color-text-title)', fontWeight: '600' }}>
+              Want to take a craft?
+            </h4>
+            <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: '1.4' }}>
+              Let me know what you want to craft and the amount, and I will claim it for you!
+            </p>
+          </div>
+        </div>
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.03)',
+          padding: '0.5rem 1.1rem',
+          borderRadius: '4px',
+          border: '1px solid rgba(255,255,255,0.06)',
+          fontSize: '0.85rem',
+          fontWeight: '600',
+          color: 'var(--color-gold-light)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.45rem',
+          flexShrink: 0
+        }}>
+          <span>DM me in discord!</span>
+          <span style={{ color: 'var(--color-text-title)', background: 'rgba(197, 160, 89, 0.1)', padding: '0.15rem 0.5rem', borderRadius: '3px', fontFamily: 'monospace' }}>@Alamai</span>
         </div>
       </div>
 
