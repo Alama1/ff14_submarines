@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Wrench, RefreshCw, Hammer, AlertTriangle, ExternalLink, MessageSquare } from 'lucide-react';
 import { loadActiveCrafts } from '../SubmarineData';
 import { ActiveCraft } from '../types';
+import { getEnv } from '../firebase';
 
 interface CrafterItem {
   ingredient: string;
@@ -20,7 +21,7 @@ interface ApiResponse {
   error?: string;
 }
 
-const APPS_SCRIPT_URL = import.meta.env.VITE_CRAFTERS_SHEET_URL || '';
+const getAppsScriptUrl = () => getEnv('VITE_CRAFTERS_SHEET_URL');
 // ─────────────────────────────────────────────────────────────────────────────
 
 function formatGil(n: number): string {
@@ -46,15 +47,16 @@ export default function ForCrafters() {
   const [lastUpdated, setLastUpdated] = useState<string>('');
 
   const fetchData = useCallback(async () => {
-    if (!APPS_SCRIPT_URL) {
-      setError('No API URL configured. Set VITE_CRAFTERS_SHEET_URL in your .env file.');
+    const url = getAppsScriptUrl();
+    if (!url) {
+      setError('No API URL configured. Set VITE_CRAFTERS_SHEET_URL in your env config.');
       return;
     }
     setLoading(true);
     setError('');
     try {
       const [res, craftsData] = await Promise.all([
-        fetch(APPS_SCRIPT_URL),
+        fetch(url),
         loadActiveCrafts()
       ]);
       const json = await res.json() as ApiResponse;
@@ -112,7 +114,7 @@ export default function ForCrafters() {
   const items        = sortedItems();
   const filteredGrandTotal = items.reduce((s, i) => s + i.totalPrice, 0);
 
-  if (!APPS_SCRIPT_URL) {
+  if (!getAppsScriptUrl()) {
     return (
       <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', padding: '2rem', textAlign: 'center' }}>
         <div className="ff-card-framed" style={{ padding: '3rem', maxWidth: '520px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', background: 'linear-gradient(135deg, rgba(197,160,89,0.05) 0%, rgba(21,31,51,0.4) 100%)' }}>
@@ -120,7 +122,7 @@ export default function ForCrafters() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <h2 style={{ fontSize: '1.4rem' }}>API URL Not Configured</h2>
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.88rem', lineHeight: '1.6' }}>
-              Set <code style={{ background: 'rgba(197,160,89,0.1)', padding: '0.1rem 0.35rem', borderRadius: '3px', color: 'var(--color-gold)' }}>VITE_CRAFTERS_SHEET_URL</code> in your <code style={{ background: 'rgba(197,160,89,0.1)', padding: '0.1rem 0.35rem', borderRadius: '3px', color: 'var(--color-gold)' }}>.env</code> file to your deployed Google Apps Script URL.
+              Set <code style={{ background: 'rgba(197,160,89,0.1)', padding: '0.1rem 0.35rem', borderRadius: '3px', color: 'var(--color-gold)' }}>VITE_CRAFTERS_SHEET_URL</code> in your env variables to your deployed Google Apps Script URL.
             </p>
           </div>
         </div>

@@ -13,7 +13,7 @@ import {
   deleteActiveCraft,
 } from '../SubmarineData';
 import { Lock, Unlock, Eye, EyeOff, Plus, Minus, RotateCcw, Upload, Download, Trash2, Tag, Hammer } from 'lucide-react';
-import { isFirebaseConfigured, auth, allowedAdminEmails } from '../firebase';
+import { isFirebaseConfigured, auth, allowedAdminEmails, getEnv } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
 import { SubmarinePart, UpdateStatus, UpdatingMap, BulkDiscount, ActiveCraft } from '../types';
 
@@ -280,7 +280,7 @@ export default function AdminPanel({
   };
 
   const fetchSheetIngredients = async () => {
-    const sheetUrl = import.meta.env.VITE_CRAFTERS_SHEET_URL || '';
+    const sheetUrl = getEnv('VITE_CRAFTERS_SHEET_URL');
     if (!sheetUrl) return;
     try {
       const res = await fetch(sheetUrl);

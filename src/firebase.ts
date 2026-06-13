@@ -10,6 +10,7 @@ interface RuntimeEnv {
   VITE_FIREBASE_MESSAGING_SENDER_ID?: string;
   VITE_FIREBASE_APP_ID?: string;
   VITE_ALLOWED_ADMIN_EMAILS?: string;
+  VITE_CRAFTERS_SHEET_URL?: string;
 }
 
 declare global {
@@ -18,7 +19,7 @@ declare global {
   }
 }
 
-const getEnv = (key: keyof RuntimeEnv): string => {
+export const getEnv = (key: keyof RuntimeEnv): string => {
   return window.env?.[key] || (import.meta.env[key] as string) || '';
 };
 
