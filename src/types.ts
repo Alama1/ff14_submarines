@@ -30,3 +30,9 @@ export interface BulkDiscount {
   discountPercent: number;
 }
 
+export interface ActiveCraft {
+  id: string;
+  quantity: number;
+}
+
+

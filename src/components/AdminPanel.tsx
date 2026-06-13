@@ -8,11 +8,14 @@ import {
   deleteBulkDiscount,
   saveAllDiscounts,
   generateDefaultDiscounts,
+  loadActiveCrafts,
+  saveActiveCraft,
+  deleteActiveCraft,
 } from '../SubmarineData';
-import { Lock, Unlock, Eye, EyeOff, Plus, Minus, RotateCcw, Upload, Download, Trash2, Tag } from 'lucide-react';
+import { Lock, Unlock, Eye, EyeOff, Plus, Minus, RotateCcw, Upload, Download, Trash2, Tag, Hammer } from 'lucide-react';
 import { isFirebaseConfigured, auth, allowedAdminEmails } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
-import { SubmarinePart, UpdateStatus, UpdatingMap, BulkDiscount } from '../types';
+import { SubmarinePart, UpdateStatus, UpdatingMap, BulkDiscount, ActiveCraft } from '../types';
 
 interface AdminPanelProps {
   parts?: SubmarinePart[];
@@ -258,6 +261,51 @@ export default function AdminPanel({
   const [newPercent, setNewPercent] = useState<string>('');
   const [discountError, setDiscountError] = useState<string>('');
 
+  const [activeCrafts, setActiveCrafts] = useState<ActiveCraft[]>([]);
+  const [sheetIngredients, setSheetIngredients] = useState<string[]>([]);
+  const [newCraftIngredient, setNewCraftIngredient] = useState<string>('');
+  const [newCraftQuantity, setNewCraftQuantity] = useState<string>('');
+  const [isManualInput, setIsManualInput] = useState<boolean>(false);
+  const [manualIngredientName, setManualIngredientName] = useState<string>('');
+  const [craftError, setCraftError] = useState<string>('');
+  const [loadingCrafts, setLoadingCrafts] = useState<boolean>(false);
+
+  const fetchActiveCrafts = async () => {
+    try {
+      const data = await loadActiveCrafts();
+      setActiveCrafts(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchSheetIngredients = async () => {
+    const sheetUrl = import.meta.env.VITE_CRAFTERS_SHEET_URL || '';
+    if (!sheetUrl) return;
+    try {
+      const res = await fetch(sheetUrl);
+      const data = await res.json();
+      if (data && Array.isArray(data.items)) {
+        const ingredients = data.items.map((item: any) => item.ingredient);
+        const unique = Array.from(new Set(ingredients)).sort() as string[];
+        setSheetIngredients(unique);
+        if (unique.length > 0) {
+          setNewCraftIngredient(unique[0]);
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching sheet ingredients in admin panel:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchActiveCrafts();
+      fetchSheetIngredients();
+    }
+  }, [isAuthenticated]);
+
+
   useEffect(() => {
     if (isFirebaseConfigured && auth) {
       const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -447,6 +495,55 @@ export default function AdminPanel({
       alert('Failed to reset discounts.');
     }
   };
+
+  const handleAddActiveCraft = async (e: FormEvent) => {
+    e.preventDefault();
+    setCraftError('');
+
+    const ingredient = isManualInput ? manualIngredientName.trim() : newCraftIngredient;
+    const qty = parseInt(newCraftQuantity, 10);
+
+    if (!ingredient) {
+      setCraftError('Ingredient name cannot be empty.');
+      return;
+    }
+    if (isNaN(qty) || qty <= 0) {
+      setCraftError('Quantity must be a positive number.');
+      return;
+    }
+
+    const newCraft: ActiveCraft = {
+      id: ingredient,
+      quantity: qty,
+    };
+
+    setLoadingCrafts(true);
+    const success = await saveActiveCraft(newCraft);
+    setLoadingCrafts(false);
+
+    if (success) {
+      setNewCraftQuantity('');
+      if (isManualInput) {
+        setManualIngredientName('');
+      }
+      fetchActiveCrafts();
+    } else {
+      setCraftError('Failed to save the crafting assignment.');
+    }
+  };
+
+  const handleDeleteActiveCraft = async (craftId: string) => {
+    if (!window.confirm(`Are you sure you want to stop crafting ${craftId}?`)) return;
+    setLoadingCrafts(true);
+    const success = await deleteActiveCraft(craftId);
+    setLoadingCrafts(false);
+    if (success) {
+      fetchActiveCrafts();
+    } else {
+      alert('Failed to delete the crafting assignment.');
+    }
+  };
+
 
   const handleSeedDatabase = async () => {
     if (!window.confirm('Are you sure you want to overwrite all default parts?')) return;
@@ -700,7 +797,165 @@ export default function AdminPanel({
         </div>
       </div>
 
-      {/* Bulk Discounts card */}
+      <div className="ff-card-framed" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
+        <h3 style={{
+          fontSize: '1.1rem',
+          textAlign: 'left',
+          marginBottom: '1rem',
+          borderBottom: '1px solid rgba(197, 160, 89, 0.15)',
+          paddingBottom: '0.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          color: 'var(--color-gold-light)',
+        }}>
+          <Hammer size={18} /> Active Crafting Assignments
+        </h3>
+
+        <div style={{ display: 'flex', flexDirection: 'row', gap: '2rem', flexWrap: 'wrap' }}>
+          
+          <div style={{ flex: '2 1 400px', minWidth: '300px' }}>
+            <h4 style={{ fontSize: '0.9rem', color: 'var(--color-text-title)', marginBottom: '0.75rem', textAlign: 'left', fontFamily: 'var(--font-title)' }}>
+              Ongoing Crafting Progress
+            </h4>
+            
+            {activeCrafts.length === 0 ? (
+              <div style={{
+                padding: '1.5rem',
+                textAlign: 'center',
+                background: 'var(--bg-input)',
+                border: '1px dashed rgba(197,160,89,0.2)',
+                borderRadius: '4px',
+                color: 'var(--color-text-muted)',
+                fontSize: '0.85rem'
+              }}>
+                No items are currently marked as being crafted.
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto', background: 'var(--bg-input)', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(197, 160, 89, 0.2)', background: 'rgba(197, 160, 89, 0.02)' }}>
+                      <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: 'var(--color-gold)' }}>Ingredient</th>
+                      <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: 'var(--color-gold)', width: '120px', textAlign: 'right' }}>Amount Crafted</th>
+                      <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: 'var(--color-gold)', width: '80px', textAlign: 'center' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeCrafts.map((craft) => (
+                      <tr key={craft.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                        <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem', color: 'var(--color-text-title)', fontWeight: '500' }}>
+                          {craft.id}
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem', textAlign: 'right', fontWeight: 'bold' }}>
+                          {craft.quantity}
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            className="ff-btn-danger"
+                            style={{ padding: '0.25rem 0.5rem', height: '28px', display: 'inline-flex', alignItems: 'center' }}
+                            onClick={() => handleDeleteActiveCraft(craft.id)}
+                            disabled={loadingCrafts}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div style={{ flex: '1 1 250px', minWidth: '250px', background: 'rgba(255,255,255,0.01)', padding: '1.25rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.03)' }}>
+            <h4 style={{ fontSize: '0.9rem', color: 'var(--color-text-title)', marginBottom: '1rem', textAlign: 'left', fontFamily: 'var(--font-title)' }}>
+              Declare Crafting Task
+            </h4>
+            
+            <form onSubmit={handleAddActiveCraft} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>Select Ingredient</label>
+                
+                {isManualInput ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="e.g. Beech Lumber"
+                      value={manualIngredientName}
+                      onChange={(e) => setManualIngredientName(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--color-gold)',
+                        fontSize: '0.75rem',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        padding: 0
+                      }}
+                      onClick={() => setIsManualInput(false)}
+                    >
+                      ← Back to dropdown list
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <select
+                      className="form-select"
+                      value={newCraftIngredient}
+                      onChange={(e) => {
+                        if (e.target.value === '__manual__') {
+                          setIsManualInput(true);
+                        } else {
+                          setNewCraftIngredient(e.target.value);
+                        }
+                      }}
+                    >
+                      {sheetIngredients.length === 0 ? (
+                        <option value="">(Enter manually or connect sheet)</option>
+                      ) : (
+                        sheetIngredients.map((ing) => (
+                          <option key={ing} value={ing}>{ing}</option>
+                        ))
+                      )}
+                      <option value="__manual__">+ Type manually...</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+              
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>Quantity Being Crafted</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  placeholder="e.g. 150"
+                  min="1"
+                  value={newCraftQuantity}
+                  onChange={(e) => setNewCraftQuantity(e.target.value)}
+                />
+              </div>
+
+              {craftError && (
+                <div style={{ color: 'var(--color-error)', fontSize: '0.78rem', textAlign: 'left', lineHeight: '1.3' }}>
+                  {craftError}
+                </div>
+              )}
+
+              <button type="submit" className="ff-btn" style={{ padding: '0.5rem', marginTop: '0.25rem' }} disabled={loadingCrafts}>
+                <Plus size={14} /> Add craft
+              </button>
+            </form>
+          </div>
+
+        </div>
+      </div>
+
       <div className="ff-card-framed" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
         <h3 style={{
           fontSize: '1.1rem',
@@ -718,7 +973,6 @@ export default function AdminPanel({
 
         <div style={{ display: 'flex', flexDirection: 'row', gap: '2rem', flexWrap: 'wrap' }}>
           
-          {/* List of existing discounts */}
           <div style={{ flex: '2 1 400px', minWidth: '300px' }}>
             <h4 style={{ fontSize: '0.9rem', color: 'var(--color-text-title)', marginBottom: '0.75rem', textAlign: 'left', fontFamily: 'var(--font-title)' }}>
               Active Discount Tiers
@@ -763,7 +1017,6 @@ export default function AdminPanel({
             )}
           </div>
 
-          {/* Form to add new discount */}
           <div style={{ flex: '1 1 250px', minWidth: '250px', background: 'rgba(255,255,255,0.01)', padding: '1.25rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.03)' }}>
             <h4 style={{ fontSize: '0.9rem', color: 'var(--color-text-title)', marginBottom: '1rem', textAlign: 'left', fontFamily: 'var(--font-title)' }}>
               Add Discount Tier

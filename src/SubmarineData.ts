@@ -1,6 +1,6 @@
 import { collection, getDocs, doc, updateDoc, writeBatch, setDoc, deleteDoc } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
-import { SubmarinePart, SubmarineClass, PartType, BulkDiscount } from './types';
+import { SubmarinePart, SubmarineClass, PartType, BulkDiscount, ActiveCraft } from './types';
 
 export const PART_TYPES: PartType[] = ['Hull', 'Stern', 'Bow', 'Bridge'];
 export const ALL_PART_TYPES: PartType[] = ['Hull', 'Stern', 'Bow', 'Bridge', 'Materials'];
@@ -320,4 +320,92 @@ async function saveAllDiscountsToFirestore(discounts: BulkDiscount[]): Promise<v
   });
   await batch.commit();
 }
+
+const ACTIVE_CRAFTS_LOCAL_STORAGE_KEY = 'ff14_submarine_active_crafts';
+
+export async function loadActiveCrafts(): Promise<ActiveCraft[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const activeCol = collection(db, 'active_crafts');
+      const snapshot = await getDocs(activeCol);
+      if (!snapshot.empty) {
+        const list: ActiveCraft[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push({ id: docSnap.id, ...(docSnap.data() as Omit<ActiveCraft, 'id'>) });
+        });
+        return list;
+      }
+      return [];
+    } catch (e) {
+      console.error('Error loading active crafts from Firestore:', e);
+    }
+  }
+
+  const stored = localStorage.getItem(ACTIVE_CRAFTS_LOCAL_STORAGE_KEY);
+  if (stored) {
+    try {
+      return JSON.parse(stored) as ActiveCraft[];
+    } catch (e) {
+      console.error('Error parsing active crafts from localStorage:', e);
+    }
+  }
+  return [];
+}
+
+export async function saveActiveCraft(craft: ActiveCraft): Promise<boolean> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const docRef = doc(db, 'active_crafts', craft.id);
+      const { id, ...data } = craft;
+      await setDoc(docRef, data, { merge: true });
+      return true;
+    } catch (e) {
+      console.error('Error saving active craft to Firestore:', e);
+    }
+  }
+
+  const stored = localStorage.getItem(ACTIVE_CRAFTS_LOCAL_STORAGE_KEY);
+  let crafts: ActiveCraft[] = [];
+  if (stored) {
+    try {
+      crafts = JSON.parse(stored);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  const idx = crafts.findIndex(c => c.id === craft.id);
+  if (idx !== -1) {
+    crafts[idx] = craft;
+  } else {
+    crafts.push(craft);
+  }
+  localStorage.setItem(ACTIVE_CRAFTS_LOCAL_STORAGE_KEY, JSON.stringify(crafts));
+  return true;
+}
+
+export async function deleteActiveCraft(craftId: string): Promise<boolean> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const docRef = doc(db, 'active_crafts', craftId);
+      await deleteDoc(docRef);
+      return true;
+    } catch (e) {
+      console.error('Error deleting active craft from Firestore:', e);
+    }
+  }
+
+  const stored = localStorage.getItem(ACTIVE_CRAFTS_LOCAL_STORAGE_KEY);
+  if (stored) {
+    try {
+      let crafts: ActiveCraft[] = JSON.parse(stored);
+      crafts = crafts.filter(c => c.id !== craftId);
+      localStorage.setItem(ACTIVE_CRAFTS_LOCAL_STORAGE_KEY, JSON.stringify(crafts));
+      return true;
+    } catch (e) {
+      console.error('Error deleting active craft from localStorage:', e);
+    }
+  }
+  return false;
+}
+
 
