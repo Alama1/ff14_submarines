@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Wrench, RefreshCw, Hammer, AlertTriangle, ExternalLink, MessageSquare } from 'lucide-react';
+import { Wrench, RefreshCw, Hammer, AlertTriangle, ExternalLink, MessageSquare, Ship, Info } from 'lucide-react';
 import { loadActiveCrafts } from '../SubmarineData';
 import { ActiveCraft } from '../types';
 import { getEnv } from '../firebase';
@@ -168,50 +168,83 @@ export default function ForCrafters() {
         background: 'linear-gradient(135deg, rgba(197,160,89,0.06) 0%, rgba(21,31,51,0.4) 100%)',
         borderLeft: '4px solid var(--color-gold)',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
+        flexDirection: 'column',
         gap: '1rem',
         borderRadius: '4px',
         textAlign: 'left'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+        {/* Info notes row */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
           <div style={{
-            background: 'rgba(197, 160, 89, 0.12)',
-            padding: '0.6rem',
-            borderRadius: '50%',
-            color: 'var(--color-gold)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0
+            gap: '0.45rem',
+            background: 'rgba(99,179,237,0.08)',
+            border: '1px solid rgba(99,179,237,0.2)',
+            borderRadius: '4px',
+            padding: '0.35rem 0.8rem',
+            fontSize: '0.8rem',
+            color: '#90cdf4',
           }}>
-            <MessageSquare size={20} />
+            <Info size={13} style={{ flexShrink: 0 }} />
+            <span>All prices are calculated based on <strong style={{ color: '#bee3f8' }}>JP server</strong> market board prices.</span>
           </div>
-          <div>
-            <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--color-text-title)', fontWeight: '600' }}>
-              Want to take a craft?
-            </h4>
-            <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: '1.4' }}>
-              Let me know what you want to craft and the amount, and I will claim it for you!
-            </p>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            background: 'rgba(99,179,237,0.08)',
+            border: '1px solid rgba(99,179,237,0.2)',
+            borderRadius: '4px',
+            padding: '0.35rem 0.8rem',
+            fontSize: '0.8rem',
+            color: '#90cdf4',
+          }}>
+            <Ship size={13} style={{ flexShrink: 0 }} />
+            <span>Need resources delivered from JP? <strong style={{ color: '#bee3f8' }}>I can help with that!</strong> Just DM me.</span>
           </div>
         </div>
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.03)',
-          padding: '0.5rem 1.1rem',
-          borderRadius: '4px',
-          border: '1px solid rgba(255,255,255,0.06)',
-          fontSize: '0.85rem',
-          fontWeight: '600',
-          color: 'var(--color-gold-light)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.45rem',
-          flexShrink: 0
-        }}>
-          <span>DM me in discord!</span>
-          <span style={{ color: 'var(--color-text-title)', background: 'rgba(197, 160, 89, 0.1)', padding: '0.15rem 0.5rem', borderRadius: '3px', fontFamily: 'monospace' }}>@Alamai</span>
+
+        {/* Craft claim row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <div style={{
+              background: 'rgba(197, 160, 89, 0.12)',
+              padding: '0.6rem',
+              borderRadius: '50%',
+              color: 'var(--color-gold)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <MessageSquare size={20} />
+            </div>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--color-text-title)', fontWeight: '600' }}>
+                Want to take a craft?
+              </h4>
+              <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: '1.4' }}>
+                Let me know what you want to craft and the amount, and I will claim it for you!
+              </p>
+            </div>
+          </div>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.03)',
+            padding: '0.5rem 1.1rem',
+            borderRadius: '4px',
+            border: '1px solid rgba(255,255,255,0.06)',
+            fontSize: '0.85rem',
+            fontWeight: '600',
+            color: 'var(--color-gold-light)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            flexShrink: 0
+          }}>
+            <span>DM me in discord!</span>
+            <span style={{ color: 'var(--color-text-title)', background: 'rgba(197, 160, 89, 0.1)', padding: '0.15rem 0.5rem', borderRadius: '3px', fontFamily: 'monospace' }}>@Alamai</span>
+          </div>
         </div>
       </div>
 
@@ -354,23 +387,44 @@ export default function ForCrafters() {
                         <td style={{ padding: '0.65rem 1rem', color: 'var(--color-text-title)', fontWeight: '500' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
                             <span>{item.ingredient}</span>
-                            {craft && (
-                              <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.25rem',
-                                padding: '0.15rem 0.45rem',
-                                borderRadius: '3px',
-                                fontSize: '0.7rem',
-                                fontWeight: '600',
-                                background: craft.quantity >= item.missing ? 'rgba(16,185,129,0.12)' : 'rgba(197,160,89,0.12)',
-                                color:      craft.quantity >= item.missing ? 'var(--color-success)'  : 'var(--color-gold)',
-                                border:     `1px solid ${craft.quantity >= item.missing ? 'rgba(16,185,129,0.25)' : 'rgba(197,160,89,0.25)'}`,
-                              }}>
-                                <Hammer size={10} />
-                                {craft.quantity >= item.missing ? `Fully Claimed (${craft.quantity})` : `${craft.quantity} / ${item.missing} claimed`}
-                              </span>
-                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              {item.whereToBuy === 'Crafting' && (
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  padding: '0.15rem 0.5rem',
+                                  borderRadius: '3px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: '700',
+                                  background: 'rgba(251,191,36,0.12)',
+                                  color: '#fbbf24',
+                                  border: '1px solid rgba(251,191,36,0.3)',
+                                  boxShadow: '0 0 6px rgba(251,191,36,0.15)',
+                                  letterSpacing: '0.02em',
+                                }}>
+                                  <Hammer size={10} />
+                                  High yield craft
+                                </span>
+                              )}
+                              {craft && (
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  padding: '0.15rem 0.45rem',
+                                  borderRadius: '3px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: '600',
+                                  background: craft.quantity >= item.missing ? 'rgba(16,185,129,0.12)' : 'rgba(197,160,89,0.12)',
+                                  color:      craft.quantity >= item.missing ? 'var(--color-success)'  : 'var(--color-gold)',
+                                  border:     `1px solid ${craft.quantity >= item.missing ? 'rgba(16,185,129,0.25)' : 'rgba(197,160,89,0.25)'}`,
+                                }}>
+                                  <Hammer size={10} />
+                                  {craft.quantity >= item.missing ? `Fully Claimed (${craft.quantity})` : `${craft.quantity} / ${item.missing} claimed`}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
 
