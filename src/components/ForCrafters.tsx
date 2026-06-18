@@ -173,37 +173,6 @@ export default function ForCrafters() {
         borderRadius: '4px',
         textAlign: 'left'
       }}>
-        {/* Info notes row */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.45rem',
-            background: 'rgba(99,179,237,0.08)',
-            border: '1px solid rgba(99,179,237,0.2)',
-            borderRadius: '4px',
-            padding: '0.35rem 0.8rem',
-            fontSize: '0.8rem',
-            color: '#90cdf4',
-          }}>
-            <Info size={13} style={{ flexShrink: 0 }} />
-            <span>All prices are calculated based on <strong style={{ color: '#bee3f8' }}>JP server</strong> market board prices.</span>
-          </div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.45rem',
-            background: 'rgba(99,179,237,0.08)',
-            border: '1px solid rgba(99,179,237,0.2)',
-            borderRadius: '4px',
-            padding: '0.35rem 0.8rem',
-            fontSize: '0.8rem',
-            color: '#90cdf4',
-          }}>
-            <Ship size={13} style={{ flexShrink: 0 }} />
-            <span>Need resources delivered from JP? <strong style={{ color: '#bee3f8' }}>I can help with that!</strong> Just DM me.</span>
-          </div>
-        </div>
 
         {/* Craft claim row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
@@ -388,25 +357,6 @@ export default function ForCrafters() {
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
                             <span>{item.ingredient}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                              {item.whereToBuy === 'Crafting' && (
-                                <span style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '0.25rem',
-                                  padding: '0.15rem 0.5rem',
-                                  borderRadius: '3px',
-                                  fontSize: '0.7rem',
-                                  fontWeight: '700',
-                                  background: 'rgba(251,191,36,0.12)',
-                                  color: '#fbbf24',
-                                  border: '1px solid rgba(251,191,36,0.3)',
-                                  boxShadow: '0 0 6px rgba(251,191,36,0.15)',
-                                  letterSpacing: '0.02em',
-                                }}>
-                                  <Hammer size={10} />
-                                  High yield craft
-                                </span>
-                              )}
                               {craft && (
                                 <span style={{
                                   display: 'inline-flex',
