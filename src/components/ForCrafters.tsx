@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Wrench, RefreshCw, Hammer, AlertTriangle, ExternalLink, MessageSquare, Ship, Info } from 'lucide-react';
+import { Wrench, RefreshCw, Hammer, AlertTriangle, ExternalLink, MessageSquare } from 'lucide-react';
 import { loadActiveCrafts } from '../SubmarineData';
 import { ActiveCraft } from '../types';
 import { getEnv } from '../firebase';
