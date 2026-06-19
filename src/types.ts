@@ -31,7 +31,8 @@ export interface BulkDiscount {
 }
 
 export interface ActiveCraft {
-  id: string;
+  id: string;        // Firestore auto-generated document ID
+  ingredient: string; // name of the ingredient being crafted
   quantity: number;
   claimedBy?: string;
 }

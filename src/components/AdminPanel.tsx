@@ -11,6 +11,7 @@ import {
   loadActiveCrafts,
   saveActiveCraft,
   deleteActiveCraft,
+  deleteAllActiveCrafts,
 } from '../SubmarineData';
 import { Lock, Unlock, Eye, EyeOff, Plus, Minus, RotateCcw, Upload, Download, Trash2, Tag, Hammer } from 'lucide-react';
 import { isFirebaseConfigured, auth, allowedAdminEmails, getEnv } from '../firebase';
@@ -513,17 +514,17 @@ export default function AdminPanel({
       return;
     }
 
-    const newCraft: ActiveCraft = {
-      id: ingredient,
+    const newCraft = {
+      ingredient,
       quantity: qty,
       ...(newCraftClaimedBy.trim() ? { claimedBy: newCraftClaimedBy.trim() } : {}),
     };
 
     setLoadingCrafts(true);
-    const success = await saveActiveCraft(newCraft);
+    const newId = await saveActiveCraft(newCraft);
     setLoadingCrafts(false);
 
-    if (success) {
+    if (newId) {
       setNewCraftQuantity('');
       setNewCraftClaimedBy('');
       if (isManualInput) {
@@ -536,7 +537,9 @@ export default function AdminPanel({
   };
 
   const handleDeleteActiveCraft = async (craftId: string) => {
-    if (!window.confirm(`Are you sure you want to stop crafting ${craftId}?`)) return;
+    const craft = activeCrafts.find(c => c.id === craftId);
+    const label = craft ? craft.ingredient : craftId;
+    if (!window.confirm(`Remove claim for "${label}"?`)) return;
     setLoadingCrafts(true);
     const success = await deleteActiveCraft(craftId);
     setLoadingCrafts(false);
@@ -544,6 +547,18 @@ export default function AdminPanel({
       fetchActiveCrafts();
     } else {
       alert('Failed to delete the crafting assignment.');
+    }
+  };
+
+  const handleClearAllCrafts = async () => {
+    if (!window.confirm('Clear ALL active crafting assignments? This cannot be undone.')) return;
+    setLoadingCrafts(true);
+    const success = await deleteAllActiveCrafts();
+    setLoadingCrafts(false);
+    if (success) {
+      fetchActiveCrafts();
+    } else {
+      alert('Failed to clear all crafting assignments.');
     }
   };
 
@@ -818,9 +833,22 @@ export default function AdminPanel({
         <div style={{ display: 'flex', flexDirection: 'row', gap: '2rem', flexWrap: 'wrap' }}>
           
           <div style={{ flex: '2 1 400px', minWidth: '300px' }}>
-            <h4 style={{ fontSize: '0.9rem', color: 'var(--color-text-title)', marginBottom: '0.75rem', textAlign: 'left', fontFamily: 'var(--font-title)' }}>
-              Ongoing Crafting Progress
-            </h4>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+              <h4 style={{ fontSize: '0.9rem', color: 'var(--color-text-title)', margin: 0, textAlign: 'left', fontFamily: 'var(--font-title)' }}>
+                Ongoing Crafting Progress
+              </h4>
+              {activeCrafts.length > 0 && (
+                <button
+                  type="button"
+                  className="ff-btn-danger"
+                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                  onClick={handleClearAllCrafts}
+                  disabled={loadingCrafts}
+                >
+                  <Trash2 size={11} /> Clear All
+                </button>
+              )}
+            </div>
             
             {activeCrafts.length === 0 ? (
               <div style={{
@@ -849,7 +877,7 @@ export default function AdminPanel({
                     {activeCrafts.map((craft) => (
                       <tr key={craft.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                         <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem', color: 'var(--color-text-title)', fontWeight: '500' }}>
-                          {craft.id}
+                          {craft.ingredient}
                         </td>
                         <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem', textAlign: 'right', fontWeight: 'bold' }}>
                           {craft.quantity}

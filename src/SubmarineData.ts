@@ -1,4 +1,4 @@
-import { collection, getDocs, doc, updateDoc, writeBatch, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, writeBatch, setDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
 import { SubmarinePart, SubmarineClass, PartType, BulkDiscount, ActiveCraft } from './types';
 
@@ -328,14 +328,12 @@ export async function loadActiveCrafts(): Promise<ActiveCraft[]> {
     try {
       const activeCol = collection(db, 'active_crafts');
       const snapshot = await getDocs(activeCol);
-      if (!snapshot.empty) {
-        const list: ActiveCraft[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push({ id: docSnap.id, ...(docSnap.data() as Omit<ActiveCraft, 'id'>) });
-        });
-        return list;
-      }
-      return [];
+      const list: ActiveCraft[] = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data() as Omit<ActiveCraft, 'id'>;
+        list.push({ id: docSnap.id, ...data });
+      });
+      return list;
     } catch (e) {
       console.error('Error loading active crafts from Firestore:', e);
     }
@@ -352,18 +350,23 @@ export async function loadActiveCrafts(): Promise<ActiveCraft[]> {
   return [];
 }
 
-export async function saveActiveCraft(craft: ActiveCraft): Promise<boolean> {
+// Saves a new craft claim — always creates a new document (multi-claimer support).
+// Returns the new document ID, or null on failure.
+export async function saveActiveCraft(
+  craft: Omit<ActiveCraft, 'id'>
+): Promise<string | null> {
   if (isFirebaseConfigured && db) {
     try {
-      const docRef = doc(db, 'active_crafts', craft.id);
-      const { id, ...data } = craft;
-      await setDoc(docRef, data, { merge: true });
-      return true;
+      const activeCol = collection(db, 'active_crafts');
+      const docRef = await addDoc(activeCol, craft);
+      return docRef.id;
     } catch (e) {
       console.error('Error saving active craft to Firestore:', e);
+      return null;
     }
   }
 
+  // localStorage fallback
   const stored = localStorage.getItem(ACTIVE_CRAFTS_LOCAL_STORAGE_KEY);
   let crafts: ActiveCraft[] = [];
   if (stored) {
@@ -373,14 +376,10 @@ export async function saveActiveCraft(craft: ActiveCraft): Promise<boolean> {
       console.error(e);
     }
   }
-  const idx = crafts.findIndex(c => c.id === craft.id);
-  if (idx !== -1) {
-    crafts[idx] = craft;
-  } else {
-    crafts.push(craft);
-  }
+  const newId = `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  crafts.push({ id: newId, ...craft });
   localStorage.setItem(ACTIVE_CRAFTS_LOCAL_STORAGE_KEY, JSON.stringify(crafts));
-  return true;
+  return newId;
 }
 
 export async function deleteActiveCraft(craftId: string): Promise<boolean> {
@@ -408,4 +407,20 @@ export async function deleteActiveCraft(craftId: string): Promise<boolean> {
   return false;
 }
 
+export async function deleteAllActiveCrafts(): Promise<boolean> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const activeCol = collection(db, 'active_crafts');
+      const snapshot = await getDocs(activeCol);
+      const batch = writeBatch(db);
+      snapshot.forEach((docSnap) => batch.delete(docSnap.ref));
+      await batch.commit();
+      return true;
+    } catch (e) {
+      console.error('Error deleting all active crafts from Firestore:', e);
+    }
+  }
 
+  localStorage.removeItem(ACTIVE_CRAFTS_LOCAL_STORAGE_KEY);
+  return true;
+}

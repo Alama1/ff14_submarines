@@ -85,13 +85,25 @@ export default function ForCrafters() {
     }
   };
 
+  // Group all claims by ingredient name for display
+  const craftsByIngredient = activeCrafts.reduce<Record<string, { totalQty: number; claimers: string[] }>>(
+    (acc, c) => {
+      if (!acc[c.ingredient]) acc[c.ingredient] = { totalQty: 0, claimers: [] };
+      acc[c.ingredient].totalQty += c.quantity;
+      if (c.claimedBy) acc[c.ingredient].claimers.push(c.claimedBy);
+      return acc;
+    },
+    {}
+  );
+
   const sortedItems = (): CrafterItem[] => {
     if (!data) return [];
     let items = [...data.items];
     if (filter === 'needs_crafting') {
       items = items.filter(i => {
-        const isClaimed = activeCrafts.some(c => c.id === i.ingredient);
-        return i.missing > 0 && !isClaimed;
+        const agg = craftsByIngredient[i.ingredient];
+        const fullyClaimedQty = agg ? agg.totalQty : 0;
+        return i.missing > 0 && fullyClaimedQty < i.missing;
       });
     }
     items.sort((a, b) => {
@@ -271,8 +283,8 @@ export default function ForCrafters() {
                 <Hammer size={12} /> Claimed Crafting Tasks
               </span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {activeCrafts.map(c => (
-                  <div key={c.id} style={{
+                {Object.entries(craftsByIngredient).map(([ingredient, agg]) => (
+                  <div key={ingredient} style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.35rem',
@@ -283,8 +295,13 @@ export default function ForCrafters() {
                     fontSize: '0.8rem',
                     color: 'var(--color-text-title)',
                   }}>
-                    <span style={{ fontWeight: '700', color: 'var(--color-gold)' }}>{c.quantity}x</span>
-                    <span>{c.id}</span>
+                    <span style={{ fontWeight: '700', color: 'var(--color-gold)' }}>{agg.totalQty}x</span>
+                    <span>{ingredient}</span>
+                    {agg.claimers.length > 0 && (
+                      <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginLeft: '0.2rem' }}>
+                        · {agg.claimers.join(', ')}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -375,7 +392,6 @@ export default function ForCrafters() {
                     </tr>
                   )}
                   {items.map((item, idx) => {
-                    const craft = activeCrafts.find(c => c.id === item.ingredient);
                     return (
                       <tr
                         key={`${item.ingredient}-${idx}`}
@@ -390,8 +406,12 @@ export default function ForCrafters() {
                         <td style={{ padding: '0.65rem 1rem', color: 'var(--color-text-title)', fontWeight: '500' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
                             <span>{item.ingredient}</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                              {craft && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                            {(() => {
+                              const agg = craftsByIngredient[item.ingredient];
+                              if (!agg) return null;
+                              const isFull = agg.totalQty >= item.missing;
+                              return (
                                 <span style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
@@ -400,15 +420,21 @@ export default function ForCrafters() {
                                   borderRadius: '3px',
                                   fontSize: '0.7rem',
                                   fontWeight: '600',
-                                  background: craft.quantity >= item.missing ? 'rgba(16,185,129,0.12)' : 'rgba(197,160,89,0.12)',
-                                  color:      craft.quantity >= item.missing ? 'var(--color-success)'  : 'var(--color-gold)',
-                                  border:     `1px solid ${craft.quantity >= item.missing ? 'rgba(16,185,129,0.25)' : 'rgba(197,160,89,0.25)'}`,
+                                  background: isFull ? 'rgba(16,185,129,0.12)' : 'rgba(197,160,89,0.12)',
+                                  color:      isFull ? 'var(--color-success)'  : 'var(--color-gold)',
+                                  border:     `1px solid ${isFull ? 'rgba(16,185,129,0.25)' : 'rgba(197,160,89,0.25)'}`,
                                 }}>
                                   <Hammer size={10} />
-                                  {craft.quantity >= item.missing ? `Fully Claimed (${craft.quantity})` : `${craft.quantity} / ${item.missing} claimed`}
+                                  {isFull
+                                    ? `Fully Claimed (${agg.totalQty})`
+                                    : `${agg.totalQty} / ${item.missing} claimed`}
+                                  {agg.claimers.length > 0 && (
+                                    <span style={{ opacity: 0.8 }}>· {agg.claimers.join(', ')}</span>
+                                  )}
                                 </span>
-                              )}
-                            </div>
+                              );
+                            })()}
+                          </div>
                           </div>
                         </td>
 
