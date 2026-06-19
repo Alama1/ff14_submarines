@@ -297,11 +297,6 @@ export default function ForCrafters() {
                   }}>
                     <span style={{ fontWeight: '700', color: 'var(--color-gold)' }}>{agg.totalQty}x</span>
                     <span>{ingredient}</span>
-                    {agg.claimers.length > 0 && (
-                      <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginLeft: '0.2rem' }}>
-                        · {agg.claimers.join(', ')}
-                      </span>
-                    )}
                   </div>
                 ))}
               </div>
@@ -428,9 +423,6 @@ export default function ForCrafters() {
                                   {isFull
                                     ? `Fully Claimed (${agg.totalQty})`
                                     : `${agg.totalQty} / ${item.missing} claimed`}
-                                  {agg.claimers.length > 0 && (
-                                    <span style={{ opacity: 0.8 }}>· {agg.claimers.join(', ')}</span>
-                                  )}
                                 </span>
                               );
                             })()}
