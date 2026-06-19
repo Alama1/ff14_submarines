@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Wrench, RefreshCw, Hammer, AlertTriangle, ExternalLink, MessageSquare } from 'lucide-react';
+import { Wrench, RefreshCw, Hammer, AlertTriangle, ExternalLink, MessageSquare, Clock } from 'lucide-react';
 import { loadActiveCrafts } from '../SubmarineData';
 import { ActiveCraft } from '../types';
 import { getEnv } from '../firebase';
@@ -160,6 +160,26 @@ export default function ForCrafters() {
             {loading ? 'Loading…' : 'Refresh'}
           </button>
         </div>
+      </div>
+
+      {/* Update cadence notice */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.6rem',
+        padding: '0.6rem 1rem',
+        background: 'rgba(197,160,89,0.06)',
+        border: '1px solid rgba(197,160,89,0.18)',
+        borderRadius: '4px',
+        fontSize: '0.82rem',
+        color: 'var(--color-text-muted)',
+        lineHeight: '1.4',
+      }}>
+        <Clock size={14} style={{ color: 'var(--color-gold)', flexShrink: 0 }} />
+        <span>
+          This list is updated every <strong style={{ color: 'var(--color-gold-light)' }}>30 minutes</strong>.
+          {' '}Some positions can increase or decrease depending on my current stock.
+        </span>
       </div>
 
       {/* Discord CTA Banner */}
