@@ -288,6 +288,20 @@ export default function ForCrafters() {
                   </div>
                 ))}
               </div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                fontSize: '0.75rem',
+                color: 'var(--color-text-muted)',
+                marginTop: '0.1rem',
+              }}>
+                <Info size={11} style={{ color: 'var(--color-gold)', flexShrink: 0 }} />
+                <span>
+                  You can claim <strong style={{ color: 'var(--color-text-title)' }}>more than the stated quantity needed</strong> — a little overstock is always welcome!
+                  Claimed amounts may appear higher than needed as the live stock updates.
+                </span>
+              </div>
             </div>
           )}
 
