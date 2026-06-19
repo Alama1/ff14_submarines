@@ -265,6 +265,7 @@ export default function AdminPanel({
   const [sheetIngredients, setSheetIngredients] = useState<string[]>([]);
   const [newCraftIngredient, setNewCraftIngredient] = useState<string>('');
   const [newCraftQuantity, setNewCraftQuantity] = useState<string>('');
+  const [newCraftClaimedBy, setNewCraftClaimedBy] = useState<string>('');
   const [isManualInput, setIsManualInput] = useState<boolean>(false);
   const [manualIngredientName, setManualIngredientName] = useState<string>('');
   const [craftError, setCraftError] = useState<string>('');
@@ -515,6 +516,7 @@ export default function AdminPanel({
     const newCraft: ActiveCraft = {
       id: ingredient,
       quantity: qty,
+      ...(newCraftClaimedBy.trim() ? { claimedBy: newCraftClaimedBy.trim() } : {}),
     };
 
     setLoadingCrafts(true);
@@ -523,6 +525,7 @@ export default function AdminPanel({
 
     if (success) {
       setNewCraftQuantity('');
+      setNewCraftClaimedBy('');
       if (isManualInput) {
         setManualIngredientName('');
       }
@@ -838,6 +841,7 @@ export default function AdminPanel({
                     <tr style={{ borderBottom: '1px solid rgba(197, 160, 89, 0.2)', background: 'rgba(197, 160, 89, 0.02)' }}>
                       <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: 'var(--color-gold)' }}>Ingredient</th>
                       <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: 'var(--color-gold)', width: '120px', textAlign: 'right' }}>Amount Crafted</th>
+                      <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: 'var(--color-gold)', textAlign: 'left' }}>Claimed By</th>
                       <th style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: 'var(--color-gold)', width: '80px', textAlign: 'center' }}>Action</th>
                     </tr>
                   </thead>
@@ -849,6 +853,9 @@ export default function AdminPanel({
                         </td>
                         <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem', textAlign: 'right', fontWeight: 'bold' }}>
                           {craft.quantity}
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.82rem', color: craft.claimedBy ? 'var(--color-gold-light)' : 'var(--color-text-muted)', fontStyle: craft.claimedBy ? 'normal' : 'italic' }}>
+                          {craft.claimedBy || '—'}
                         </td>
                         <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
                           <button
@@ -938,6 +945,17 @@ export default function AdminPanel({
                   min="1"
                   value={newCraftQuantity}
                   onChange={(e) => setNewCraftQuantity(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>Claimed By <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional)</span></label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Alamai"
+                  value={newCraftClaimedBy}
+                  onChange={(e) => setNewCraftClaimedBy(e.target.value)}
                 />
               </div>
 

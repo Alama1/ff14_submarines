@@ -33,6 +33,7 @@ export interface BulkDiscount {
 export interface ActiveCraft {
   id: string;
   quantity: number;
+  claimedBy?: string;
 }
 
 
