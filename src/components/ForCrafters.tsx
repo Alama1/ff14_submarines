@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Wrench, RefreshCw, Hammer, AlertTriangle, ExternalLink, MessageSquare, Clock, Info } from 'lucide-react';
+import { Wrench, RefreshCw, Hammer, AlertTriangle, ExternalLink, MessageSquare, Clock, Info, Zap } from 'lucide-react';
 import { loadActiveCrafts } from '../SubmarineData';
 import { ActiveCraft } from '../types';
 import { getEnv } from '../firebase';
@@ -191,6 +191,26 @@ export default function ForCrafters() {
         <span>
           This list is updated every <strong style={{ color: 'var(--color-gold-light)' }}>30 minutes</strong>.
           {' '}Some positions can increase or decrease depending on my current stock.
+        </span>
+      </div>
+
+      {/* NQ / Quick Synthesis notice */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '0.75rem',
+        padding: '0.85rem 1.1rem',
+        background: 'rgba(16,185,129,0.06)',
+        border: '1px solid rgba(16,185,129,0.22)',
+        borderRadius: '4px',
+        fontSize: '0.83rem',
+        color: 'var(--color-text-muted)',
+        lineHeight: '1.55',
+      }}>
+        <Zap size={15} style={{ color: '#10b981', flexShrink: 0, marginTop: '0.1rem' }} />
+        <span>
+          <strong style={{ color: '#10b981' }}>NQ materials only</strong> — no HQ quality is required for any of these ingredients.
+          {' '}Feel free to use <strong style={{ color: 'var(--color-text-title)' }}>Quick Synthesis</strong> to fill the quantities faster!
         </span>
       </div>
 
