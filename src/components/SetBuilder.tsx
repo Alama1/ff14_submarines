@@ -250,7 +250,15 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
     }, 0);
   };
 
+  const getBuildDiscountableSubtotal = (build: SubmarineBuild) => {
+    return PART_TYPES.reduce<number>((sum, type) => {
+      const part = build.selections[type];
+      return sum + (part ? part.price * build.quantities[type] : 0);
+    }, 0);
+  };
+
   const overallSubtotal = builds.reduce((sum, b) => sum + getBuildSubtotal(b), 0);
+  const discountableSubtotal = builds.reduce((sum, b) => sum + getBuildDiscountableSubtotal(b), 0);
 
   const totalParts = builds.reduce((sum, b) => {
     return sum + PART_TYPES.reduce((partSum, type) => {
@@ -271,7 +279,7 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
       return pct > maxPct ? d : max;
     }, { threshold: 0, discountPercent: 0 });
 
-  const discountAmount = Math.round(overallSubtotal * (Number(activeDiscount.discountPercent) / 100));
+  const discountAmount = Math.round(discountableSubtotal * (Number(activeDiscount.discountPercent) / 100));
   const totalPrice = overallSubtotal - discountAmount;
 
   const hasOutOfStock = builds.some((b) =>
@@ -635,9 +643,14 @@ Total Price: ${priceText}`;
             if (!mrmPart) return null;
             return (
               <div className="ff-card-framed" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                   <span style={{ color: 'var(--color-gold)' }}>✦</span>
-                   <h3 style={{ fontSize: '1.15rem', color: 'var(--color-text-title)', margin: 0 }}>Magitek Repair Materials</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', textAlign: 'left' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                     <span style={{ color: 'var(--color-gold)' }}>✦</span>
+                     <h3 style={{ fontSize: '1.15rem', color: 'var(--color-text-title)', margin: 0 }}>Magitek Repair Materials</h3>
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginLeft: '1.1rem', fontStyle: 'italic' }}>
+                    * Bulk discount does not apply to materials
+                  </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <div className="gil-price" style={{ fontSize: '1rem' }}>
