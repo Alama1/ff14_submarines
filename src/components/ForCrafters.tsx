@@ -3,6 +3,12 @@ import { Wrench, RefreshCw, Hammer, AlertTriangle, ExternalLink, MessageSquare, 
 import { loadActiveCrafts } from '../SubmarineData';
 import { ActiveCraft } from '../types';
 import { getEnv } from '../firebase';
+import {
+  getCache, setCache,
+  CRAFTERS_TTL,
+  CACHE_KEY_CRAFTERS_SHEET,
+  CACHE_KEY_CRAFTERS_ACTIVE,
+} from '../cache';
 
 interface CrafterItem {
   ingredient: string;
@@ -46,12 +52,27 @@ export default function ForCrafters() {
   const [sortDir,     setSortDir]    = useState<SortDir>('asc');
   const [lastUpdated, setLastUpdated] = useState<string>('');
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (bypassCache = false) => {
     const url = getAppsScriptUrl();
     if (!url) {
       setError('No API URL configured. Set VITE_CRAFTERS_SHEET_URL in your env config.');
       return;
     }
+
+    // Try serving from cache first (unless the user explicitly refreshed)
+    if (!bypassCache) {
+      const cachedSheet = getCache<ApiResponse>(CACHE_KEY_CRAFTERS_SHEET, CRAFTERS_TTL);
+      const cachedCrafts = getCache<ActiveCraft[]>(CACHE_KEY_CRAFTERS_ACTIVE, CRAFTERS_TTL);
+      if (cachedSheet && cachedCrafts) {
+        setData(cachedSheet);
+        setActiveCrafts(cachedCrafts);
+        if (cachedSheet.updatedAt) {
+          setLastUpdated(new Date(cachedSheet.updatedAt).toLocaleString());
+        }
+        return;
+      }
+    }
+
     setLoading(true);
     setError('');
     try {
@@ -61,6 +82,11 @@ export default function ForCrafters() {
       ]);
       const json = await res.json() as ApiResponse;
       if (json.error) throw new Error(json.error);
+
+      // Persist to cache
+      setCache(CACHE_KEY_CRAFTERS_SHEET, json);
+      setCache(CACHE_KEY_CRAFTERS_ACTIVE, craftsData);
+
       setData(json);
       setActiveCrafts(craftsData);
       if (json.updatedAt) {
@@ -164,7 +190,7 @@ export default function ForCrafters() {
           <button
             type="button"
             className="ff-btn-secondary"
-            onClick={fetchData}
+            onClick={() => fetchData(true)}
             disabled={loading}
             style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem', fontSize: '0.85rem' }}
           >
@@ -374,12 +400,13 @@ export default function ForCrafters() {
                   <tr style={{ borderBottom: '1px solid rgba(197,160,89,0.2)', background: 'rgba(197,160,89,0.04)' }}>
                     {([
                       ['ingredient',  'Ingredient'],
-                      ['missing',     'Qty Needed'],
+                      ['missing',     'Current Stock / Max'],
+                      ['missing',     'Missing'],
                       ['pricePerUnit','Price / Unit'],
                       ['totalPrice',  'Total Price'],
-                    ] as [SortField, string][]).map(([field, label]) => (
+                    ] as [SortField, string][]).map(([field, label], i) => (
                       <th
-                        key={field}
+                        key={`${field}-${i}`}
                         onClick={() => handleSort(field)}
                         style={{
                           padding: '0.7rem 1rem',
@@ -388,12 +415,12 @@ export default function ForCrafters() {
                           fontSize: '0.72rem',
                           textTransform: 'uppercase',
                           letterSpacing: '0.06em',
-                          cursor: 'pointer',
+                          cursor: label === 'Current Stock / Max' ? 'default' : 'pointer',
                           userSelect: 'none',
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {label}<SortIndicator field={field} />
+                        {label}{label !== 'Current Stock / Max' && <SortIndicator field={field} />}
                       </th>
                     ))}
                   </tr>
@@ -401,7 +428,7 @@ export default function ForCrafters() {
                 <tbody>
                   {items.length === 0 && (
                     <tr>
-                      <td colSpan={4} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                      <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                         No ingredients found for this filter.
                       </td>
                     </tr>
@@ -450,9 +477,20 @@ export default function ForCrafters() {
                           </div>
                         </td>
 
-                        {/* Qty needed */}
-                        <td style={{ padding: '0.65rem 1rem', textAlign: 'right', fontWeight: '600', color: item.missing > 0 ? 'var(--color-text-title)' : 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                          {item.missing > 0 ? formatGil(item.missing) : '—'}
+                        {/* Stock (current / total) */}
+                        <td style={{ padding: '0.65rem 1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: '0.82rem' }}>
+                          <span style={{ color: 'var(--color-text-muted)' }}>
+                            {formatGil(item.stock)}
+                          </span>
+                          <span style={{ color: 'rgba(197,160,89,0.35)', margin: '0 0.15rem' }}>/</span>
+                          <span style={{ color: 'var(--color-text-title)' }}>
+                            {formatGil(item.totalQty)}
+                          </span>
+                        </td>
+
+                        {/* Missing */}
+                        <td style={{ padding: '0.65rem 1rem', textAlign: 'right', fontWeight: '600', color: item.missing > 0 ? 'var(--color-warning, #f59e0b)' : 'var(--color-success, #10b981)', fontVariantNumeric: 'tabular-nums' }}>
+                          {item.missing > 0 ? formatGil(item.missing) : '✓'}
                         </td>
 
                         {/* Price per unit */}
@@ -480,7 +518,7 @@ export default function ForCrafters() {
                 {items.length > 0 && (
                   <tfoot>
                     <tr style={{ borderTop: '1px solid rgba(197,160,89,0.2)', background: 'rgba(197,160,89,0.04)' }}>
-                      <td colSpan={3} style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-gold-light)', fontWeight: '600' }}>
+                      <td colSpan={4} style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-gold-light)', fontWeight: '600' }}>
                         {filter === 'all' ? 'Grand Total' : `${filter} Total`}
                       </td>
                       <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>

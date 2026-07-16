@@ -17,6 +17,11 @@ import { Lock, Unlock, Eye, EyeOff, Plus, Minus, RotateCcw, Upload, Download, Tr
 import { isFirebaseConfigured, auth, allowedAdminEmails, getEnv } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
 import { SubmarinePart, UpdateStatus, UpdatingMap, BulkDiscount, ActiveCraft } from '../types';
+import {
+  getCache, setCache,
+  ADMIN_SHEET_INGREDIENTS_TTL,
+  CACHE_KEY_ADMIN_SHEET_INGREDIENTS,
+} from '../cache';
 
 interface AdminPanelProps {
   parts?: SubmarinePart[];
@@ -282,6 +287,16 @@ export default function AdminPanel({
   };
 
   const fetchSheetIngredients = async () => {
+    // Try 1-day cache first
+    const cached = getCache<string[]>(CACHE_KEY_ADMIN_SHEET_INGREDIENTS, ADMIN_SHEET_INGREDIENTS_TTL);
+    if (cached && cached.length > 0) {
+      setSheetIngredients(cached);
+      if (!newCraftIngredient && cached.length > 0) {
+        setNewCraftIngredient(cached[0]);
+      }
+      return;
+    }
+
     const sheetUrl = getEnv('VITE_CRAFTERS_SHEET_URL');
     if (!sheetUrl) return;
     try {
@@ -291,6 +306,7 @@ export default function AdminPanel({
         const ingredients = data.items.map((item: any) => item.ingredient);
         const unique = Array.from(new Set(ingredients)).sort() as string[];
         setSheetIngredients(unique);
+        setCache(CACHE_KEY_ADMIN_SHEET_INGREDIENTS, unique);
         if (unique.length > 0) {
           setNewCraftIngredient(unique[0]);
         }
