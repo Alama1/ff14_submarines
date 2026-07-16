@@ -10,13 +10,33 @@ import './App.css';
 import { auth, isFirebaseConfigured, allowedAdminEmails } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
  
+type TabId = 'builder' | 'crafters' | 'admin';
+
+const VALID_TABS: TabId[] = ['builder', 'crafters', 'admin'];
+
+function getTabFromHash(): TabId {
+  const hash = window.location.hash.replace('#', '').toLowerCase();
+  if (!hash) return 'builder';
+  return VALID_TABS.includes(hash as TabId) ? (hash as TabId) : 'builder';
+}
+
 function App() {
   const [parts, setParts] = useState<SubmarinePart[]>([]);
   const [discounts, setDiscounts] = useState<BulkDiscount[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'builder' | 'crafters' | 'admin'>('builder');
+  const [activeTab, setActiveTabState] = useState<TabId>(getTabFromHash);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
- 
+
+  const setActiveTab = (tab: TabId) => {
+    setActiveTabState(tab);
+    if (tab === 'builder') {
+      // Clean URL — remove the hash entirely for the default tab
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    } else {
+      window.location.hash = tab;
+    }
+  };
+
   const fetchData = async (): Promise<void> => {
     setLoading(true);
     try {
@@ -42,6 +62,10 @@ function App() {
   useEffect(() => {
     fetchData();
 
+    // Sync tab when the user navigates with browser back / forward
+    const onHashChange = () => setActiveTabState(getTabFromHash());
+    window.addEventListener('hashchange', onHashChange);
+
     if (isFirebaseConfigured && auth) {
       const unsubscribe = onAuthStateChanged(auth, (user) => {
         if (user && user.email) {
@@ -51,7 +75,10 @@ function App() {
           setIsAdminUnlocked(false);
         }
       });
-      return () => unsubscribe();
+      return () => {
+        window.removeEventListener('hashchange', onHashChange);
+        unsubscribe();
+      };
     } else {
       const checkAdminState = () => {
         const authVal = localStorage.getItem('ff14_sub_admin_auth');
@@ -64,6 +91,7 @@ function App() {
       const interval = setInterval(checkAdminState, 1000);
 
       return () => {
+        window.removeEventListener('hashchange', onHashChange);
         window.removeEventListener('storage', checkAdminState);
         clearInterval(interval);
       };
