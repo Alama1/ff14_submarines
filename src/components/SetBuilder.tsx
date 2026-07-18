@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import PartSelector from './PartSelector';
 import { formatGil, PART_TYPES, ALL_PART_TYPES } from '../SubmarineData';
-import { Copy, Check, Info, Anchor, Plus, Minus, Tag } from 'lucide-react';
+import { Copy, Check, Info, Anchor, Plus, Minus, Tag, Hammer } from 'lucide-react';
 import { SubmarinePart, PartType, SelectionMap, BulkDiscount, PartIngredient, Order } from '../types';
 import { useStockData } from '../hooks/useStockData';
-import { computeAvailableStock } from '../utils/stockCalc';
+import { computeAvailableStock, computeCraftableCount } from '../utils/stockCalc';
 
 interface SetBuilderProps {
   parts?: SubmarinePart[];
@@ -307,6 +307,19 @@ export default function SetBuilder({ parts = [], discounts = [], partIngredients
     [stockItems, orders, partIngredients]
   );
 
+  // ── Set-level craftable count ───────────────────────────────────────────────
+
+  const setCraftableCount = useMemo(() => {
+    const parts = ALL_PART_TYPES
+      .map((type) => ({
+        partId: activeBuild.selections[type]?.id || '',
+        quantity: activeBuild.quantities[type],
+      }))
+      .filter((p) => p.partId && p.quantity > 0);
+
+    return computeCraftableCount(parts, availableStock, partIngredients);
+  }, [activeBuild.selections, activeBuild.quantities, availableStock, partIngredients]);
+
   // stockResult removed since availability is checked per-part
 
   // Compute parts that are insufficient (physical stock + craftable is less than requested quantity)
@@ -325,8 +338,16 @@ export default function SetBuilder({ parts = [], discounts = [], partIngredients
         const recipe = partIngredients.find(pi => pi.partId === part.id);
         let craftable = 0;
         if (recipe && recipe.ingredients.length > 0) {
+          const NPCTrades = new Set([
+            "walnut lumber", "iron rivets", "mythril rivets", "oak lumber",
+            "steel plate", "holy cedar lumber", "mythrite ingot", "titanium ingot",
+            "steel rivets", "steel ingot", "mythril ingot", "clear glass lens",
+            "wing glue", "enchanted hardsilver ink", "hardsilver ingot", "mythrite rivets",
+          ]);
           let minCraftable = Infinity;
           recipe.ingredients.forEach((ing) => {
+            // NPC-trade ingredients are essentially infinite — skip them
+            if (NPCTrades.has(ing.name.toLowerCase())) return;
             const avail = availableStock[ing.name.toLowerCase()] ?? 0;
             const count = Math.floor(avail / ing.quantity);
             if (count < minCraftable) minCraftable = count;
@@ -693,6 +714,7 @@ Total Price: ${priceText}`;
                 onQuantityChange={(qty) => handleQuantityChange(type, qty)}
                 availableStock={availableStock}
                 partIngredients={partIngredients}
+                craftableSets={setCraftableCount.craftable}
               />
             ))}
           </div>
@@ -752,6 +774,12 @@ Total Price: ${priceText}`;
                     <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
                       Some of the parts that you selected can't be crafted instantly, so it may take a bit longer to fulfill. Everything else looks fine!
                     </span>
+                    {setCraftableCount.hasRecipes && setCraftableCount.craftable > 0 && (
+                      <span style={{ fontSize: '0.78rem', color: 'var(--color-gold-light)', marginTop: '0.25rem' }}>
+                        <Hammer size={10} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                        Enough ingredients to craft <strong>{setCraftableCount.craftable}</strong> complete {setCraftableCount.craftable === 1 ? 'set' : 'sets'}
+                      </span>
+                    )}
                   </div>
                 </>
               ) : (
@@ -764,6 +792,12 @@ Total Price: ${priceText}`;
                     <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
                       All materials for your craft are in-stock, so craft will be quick!
                     </span>
+                    {setCraftableCount.hasRecipes && setCraftableCount.craftable > 0 && (
+                      <span style={{ fontSize: '0.78rem', color: 'var(--color-success)', marginTop: '0.25rem' }}>
+                        <Hammer size={10} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                        Enough ingredients to craft <strong>{setCraftableCount.craftable}</strong> complete {setCraftableCount.craftable === 1 ? 'set' : 'sets'}
+                      </span>
+                    )}
                   </div>
                 </>
               )}

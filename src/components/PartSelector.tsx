@@ -11,6 +11,7 @@ interface PartSelectorProps {
   onQuantityChange: (qty: number) => void;
   availableStock?: Record<string, number>;
   partIngredients?: PartIngredient[];
+  craftableSets?: number;
 }
 
 export default function PartSelector({
@@ -22,6 +23,7 @@ export default function PartSelector({
   onQuantityChange,
   availableStock = {},
   partIngredients = [],
+  craftableSets,
 }: PartSelectorProps) {
   const currentClassKey = selectedPart ? selectedPart.classKey : '';
   const currentIsModified = selectedPart ? selectedPart.isModified : false;
@@ -197,13 +199,19 @@ export default function PartSelector({
                   In Stock ({physicalStock})
                 </span>
               )}
-              {hasRecipe && craftableCount > 0 && (
+              {hasRecipe && craftableSets !== undefined && craftableSets > 0 && (
+                <span className="badge badge-info" style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', whiteSpace: 'nowrap', background: 'rgba(96,165,250,0.15)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.3)' }}>
+                  <Hammer size={8} style={{ marginRight: '2px', verticalAlign: 'middle' }} />
+                  Craftable ({craftableSets} sets)
+                </span>
+              )}
+              {hasRecipe && craftableSets === undefined && craftableCount > 0 && (
                 <span className="badge badge-info" style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', whiteSpace: 'nowrap', background: 'rgba(96,165,250,0.15)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.3)' }}>
                   <Hammer size={8} style={{ marginRight: '2px', verticalAlign: 'middle' }} />
                   Craftable ({craftableCount})
                 </span>
               )}
-              {physicalStock === 0 && craftableCount === 0 && (
+              {physicalStock === 0 && (craftableSets !== undefined ? craftableSets === 0 : craftableCount === 0) && (
                 <span className="badge badge-warning" style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', opacity: 0.9, whiteSpace: 'nowrap' }}>
                   Out of Stock
                 </span>

@@ -101,6 +101,13 @@ export function computeCraftableCount(
   ingredientDemand: Record<string, number>;
   hasRecipes: boolean;
 } {
+  const NPCTrades = new Set([
+    "walnut lumber", "iron rivets", "mythril rivets", "oak lumber",
+    "steel plate", "holy cedar lumber", "mythrite ingot", "titanium ingot",
+    "steel rivets", "steel ingot", "mythril ingot", "clear glass lens",
+    "wing glue", "enchanted hardsilver ink", "hardsilver ingot", "mythrite rivets",
+  ]);
+
   const recipeByPartId: Record<string, PartIngredient> = {};
   partIngredients.forEach((r) => { recipeByPartId[r.partId] = r; });
 
@@ -127,6 +134,9 @@ export function computeCraftableCount(
   const bottlenecks: { name: string; available: number; needed: number }[] = [];
 
   Object.entries(demand).forEach(([key, needed]) => {
+    // NPC-trade ingredients are essentially infinite — skip them
+    if (NPCTrades.has(key)) return;
+
     const available = availableStock[key] ?? 0;
     const canMake = needed > 0 ? Math.floor(available / needed) : Infinity;
     if (canMake < craftable) craftable = canMake;
