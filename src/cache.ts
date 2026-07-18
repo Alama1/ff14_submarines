@@ -43,7 +43,11 @@ export const CRAFTERS_TTL = 5 * 60 * 1000;
 
 export const ADMIN_SHEET_INGREDIENTS_TTL = 24 * 60 * 60 * 1000;
 
+// Part ingredient recipes are static-ish — cache for 10 minutes
+export const PART_INGREDIENTS_TTL = 10 * 60 * 1000;
+
 export const CACHE_KEY_CRAFTERS_SHEET = "ff14_cache_crafters_sheet";
 export const CACHE_KEY_CRAFTERS_ACTIVE = "ff14_cache_crafters_active";
 export const CACHE_KEY_ADMIN_SHEET_INGREDIENTS =
   "ff14_cache_admin_sheet_ingredients";
+export const CACHE_KEY_PART_INGREDIENTS = "ff14_cache_part_ingredients";

@@ -12,11 +12,14 @@ import {
   saveActiveCraft,
   deleteActiveCraft,
   deleteAllActiveCrafts,
+  savePartIngredient,
+  deletePartIngredient,
 } from '../SubmarineData';
-import { Lock, Unlock, Eye, EyeOff, Plus, Minus, RotateCcw, Upload, Download, Trash2, Tag, Hammer } from 'lucide-react';
+import { Lock, Unlock, Eye, EyeOff, Plus, Minus, RotateCcw, Upload, Download, Trash2, Tag, Hammer, ShoppingCart, Beaker, Save, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import OrderTracker from './OrderTracker';
 import { isFirebaseConfigured, auth, allowedAdminEmails, getEnv } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
-import { SubmarinePart, UpdateStatus, UpdatingMap, BulkDiscount, ActiveCraft } from '../types';
+import { SubmarinePart, UpdateStatus, UpdatingMap, BulkDiscount, ActiveCraft, PartIngredient, Ingredient } from '../types';
 import {
   getCache, setCache,
   ADMIN_SHEET_INGREDIENTS_TTL,
@@ -29,6 +32,7 @@ interface AdminPanelProps {
   onUpdatePart: (partId: string, updates: Partial<SubmarinePart>) => void;
   discounts?: BulkDiscount[];
   onRefreshDiscounts: () => void;
+  partIngredients?: PartIngredient[];
 }
 
 interface AdminEditRowProps {
@@ -54,7 +58,7 @@ function AdminEditRow({ part, status, onAdjustStock, onFieldChange }: AdminEditR
     let parsedValue = parseInt(localValue, 10);
     if (isNaN(parsedValue)) parsedValue = 0;
     if (parsedValue < 0) parsedValue = 0;
-    
+
     if (parsedValue !== originalValue) {
       onFieldChange(part.id, field, String(parsedValue));
     }
@@ -243,6 +247,7 @@ export default function AdminPanel({
   onUpdatePart,
   discounts = [],
   onRefreshDiscounts,
+  partIngredients = [],
 }: AdminPanelProps) {
   const [passcode, setPasscode] = useState<string>('');
   const [showPasscode, setShowPasscode] = useState<boolean>(false);
@@ -276,6 +281,45 @@ export default function AdminPanel({
   const [manualIngredientName, setManualIngredientName] = useState<string>('');
   const [craftError, setCraftError] = useState<string>('');
   const [loadingCrafts, setLoadingCrafts] = useState<boolean>(false);
+
+  // ─── Part Ingredient Editor States ───
+  const [selectedPartIdForRecipe, setSelectedPartIdForRecipe] = useState<string>('');
+  const [editingRecipeIngredients, setEditingRecipeIngredients] = useState<Ingredient[]>([]);
+  const [newRecipeIngName, setNewRecipeIngName] = useState<string>('');
+  const [newRecipeIngQty, setNewRecipeIngQty] = useState<string>('1');
+  const [recipeError, setRecipeError] = useState<string>('');
+  const [recipeSuccess, setRecipeSuccess] = useState<string>('');
+  const [savingRecipe, setSavingRecipe] = useState<boolean>(false);
+  const [recipeManualInput, setRecipeManualInput] = useState<boolean>(false);
+  const [recipeManualIngredientName, setRecipeManualIngredientName] = useState<string>('');
+
+  // ─── Bulk Recipe Import States ───
+  const [bulkRecipeText, setBulkRecipeText] = useState<string>('');
+  const [showBulkImport, setShowBulkImport] = useState<boolean>(false);
+  const [bulkImportStatus, setBulkImportStatus] = useState<string>('');
+  const [bulkImportError, setBulkImportError] = useState<string>('');
+
+  useEffect(() => {
+    if (selectedPartIdForRecipe) {
+      const match = partIngredients.find(pi => pi.partId === selectedPartIdForRecipe);
+      if (match) {
+        setEditingRecipeIngredients([...match.ingredients]);
+      } else {
+        setEditingRecipeIngredients([]);
+      }
+      setRecipeError('');
+      setRecipeSuccess('');
+    } else {
+      setEditingRecipeIngredients([]);
+    }
+  }, [selectedPartIdForRecipe, partIngredients]);
+
+  useEffect(() => {
+    if (sheetIngredients.length > 0 && !newRecipeIngName) {
+      setNewRecipeIngName(sheetIngredients[0]);
+    }
+  }, [sheetIngredients, newRecipeIngName]);
+
 
   const fetchActiveCrafts = async () => {
     try {
@@ -578,6 +622,135 @@ export default function AdminPanel({
     }
   };
 
+  const handleAddIngredientToRecipe = () => {
+    const finalName = recipeManualInput ? recipeManualIngredientName.trim() : newRecipeIngName;
+    if (!finalName) {
+      setRecipeError('Ingredient name cannot be empty.');
+      return;
+    }
+    const qty = parseInt(newRecipeIngQty, 10);
+    if (isNaN(qty) || qty <= 0) {
+      setRecipeError('Quantity must be a positive number.');
+      return;
+    }
+
+    const nameLower = finalName.toLowerCase();
+    const existingIdx = editingRecipeIngredients.findIndex(
+      (ing) => ing.name.toLowerCase() === nameLower
+    );
+
+    let updated: Ingredient[];
+    if (existingIdx !== -1) {
+      updated = editingRecipeIngredients.map((ing, idx) =>
+        idx === existingIdx ? { ...ing, quantity: ing.quantity + qty } : ing
+      );
+    } else {
+      updated = [
+        ...editingRecipeIngredients,
+        { name: finalName, quantity: qty }
+      ];
+    }
+
+    setEditingRecipeIngredients(updated);
+    setRecipeError('');
+    setRecipeSuccess('');
+    if (recipeManualInput) {
+      setRecipeManualIngredientName('');
+    }
+    setNewRecipeIngQty('1');
+  };
+
+  const handleRemoveIngredientFromRecipe = (name: string) => {
+    setEditingRecipeIngredients(
+      editingRecipeIngredients.filter((ing) => ing.name !== name)
+    );
+    setRecipeError('');
+    setRecipeSuccess('');
+  };
+
+  const handleSaveRecipe = async () => {
+    if (!selectedPartIdForRecipe) {
+      setRecipeError('No part selected.');
+      return;
+    }
+
+    const part = parts.find((p) => p.id === selectedPartIdForRecipe);
+    if (!part) {
+      setRecipeError('Selected part not found.');
+      return;
+    }
+
+    setSavingRecipe(true);
+    setRecipeError('');
+    setRecipeSuccess('');
+
+    try {
+      if (editingRecipeIngredients.length === 0) {
+        const success = await deletePartIngredient(selectedPartIdForRecipe);
+        if (success) {
+          setRecipeSuccess('Recipe deleted/cleared successfully!');
+          onRefreshParts();
+        } else {
+          setRecipeError('Failed to clear the recipe.');
+        }
+      } else {
+        const recipe: PartIngredient = {
+          partId: selectedPartIdForRecipe,
+          partName: part.name,
+          ingredients: editingRecipeIngredients,
+        };
+        const success = await savePartIngredient(recipe);
+        if (success) {
+          setRecipeSuccess('Recipe saved successfully!');
+          onRefreshParts();
+        } else {
+          setRecipeError('Failed to save the recipe.');
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      setRecipeError('An unexpected error occurred.');
+    } finally {
+      setSavingRecipe(false);
+    }
+  };
+
+  const handleBulkImportRecipes = async () => {
+    if (!bulkRecipeText.trim()) {
+      setBulkImportError('Please paste spreadsheet data first.');
+      return;
+    }
+
+    setBulkImportStatus('Parsing and importing...');
+    setBulkImportError('');
+
+    try {
+      const parsedRecipes = parseSpreadsheetRecipes(bulkRecipeText, parts);
+      if (parsedRecipes.length === 0) {
+        setBulkImportError('Could not parse any valid recipes. Ensure columns are tab-separated.');
+        setBulkImportStatus('');
+        return;
+      }
+
+      let count = 0;
+      for (const recipe of parsedRecipes) {
+        const success = await savePartIngredient(recipe);
+        if (success) count++;
+      }
+
+      setBulkImportStatus(`Successfully imported ${count} recipes!`);
+      setBulkRecipeText('');
+      onRefreshParts();
+      setTimeout(() => setBulkImportStatus(''), 5000);
+    } catch (e) {
+      console.error(e);
+      setBulkImportError('An unexpected error occurred during import.');
+      setBulkImportStatus('');
+    }
+  };
+
+
+
 
   const handleSeedDatabase = async () => {
     if (!window.confirm('Are you sure you want to overwrite all default parts?')) return;
@@ -795,6 +968,321 @@ export default function AdminPanel({
         </div>
       </div>
 
+      <div className="ff-card-framed" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
+        <h3 style={{
+          fontSize: '1.1rem',
+          textAlign: 'left',
+          marginBottom: '1.5rem',
+          borderBottom: '1px solid rgba(197, 160, 89, 0.15)',
+          paddingBottom: '0.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          color: 'var(--color-gold-light)',
+        }}>
+          <ShoppingCart size={18} /> Order Tracker
+        </h3>
+        <OrderTracker parts={parts} />
+      </div>
+
+      {/* ─── Part Ingredients Editor ─── */}
+      <div className="ff-card-framed" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
+        <h3 style={{
+          fontSize: '1.1rem',
+          textAlign: 'left',
+          marginBottom: '1.5rem',
+          borderBottom: '1px solid rgba(197, 160, 89, 0.15)',
+          paddingBottom: '0.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          color: 'var(--color-gold-light)',
+        }}>
+          <Beaker size={18} /> Part Ingredients Editor
+        </h3>
+        
+        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem', textAlign: 'left' }}>
+          Define the raw materials required to craft each submarine component. These recipes are used to calculate real-time craftability in the Set Builder.
+        </p>
+
+        {/* Bulk Import Section */}
+        <div style={{ marginBottom: '1.25rem', textAlign: 'left' }}>
+          <button
+            type="button"
+            className="ff-btn-secondary"
+            onClick={() => setShowBulkImport(v => !v)}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
+          >
+            {showBulkImport ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            Bulk Import from Spreadsheet
+          </button>
+
+          {showBulkImport && (
+            <div style={{
+              marginTop: '0.75rem',
+              padding: '1rem',
+              background: 'rgba(0,0,0,0.15)',
+              border: '1px dashed rgba(197,160,89,0.2)',
+              borderRadius: '6px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+            }}>
+              <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
+                Paste Tab-Separated Rows (Part Row followed by Quantity Row)
+              </label>
+              <textarea
+                className="form-input"
+                rows={6}
+                value={bulkRecipeText}
+                onChange={(e) => setBulkRecipeText(e.target.value)}
+                placeholder="e.g.&#10;Shark-class Pressure Hull&#9;Walnut Lumber&#9;Spruce Lumber&#10;Item quantity&#9;18&#9;18"
+                style={{ fontFamily: 'monospace', fontSize: '0.78rem', resize: 'vertical' }}
+              />
+              <button
+                type="button"
+                className="ff-btn"
+                onClick={handleBulkImportRecipes}
+                style={{ alignSelf: 'flex-start', padding: '0.45rem 1rem', fontSize: '0.8rem' }}
+              >
+                Parse &amp; Import Recipes
+              </button>
+              {bulkImportStatus && (
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-success)', fontWeight: '500' }}>
+                  {bulkImportStatus}
+                </span>
+              )}
+              {bulkImportError && (
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-error)', fontWeight: '500' }}>
+                  {bulkImportError}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Select Part Dropdown */}
+          <div className="form-group" style={{ textAlign: 'left', marginBottom: 0 }}>
+            <label className="form-label" style={{ fontWeight: '600' }}>Select Submarine Part</label>
+            <select
+              className="form-select"
+              value={selectedPartIdForRecipe}
+              onChange={(e) => setSelectedPartIdForRecipe(e.target.value)}
+              style={{ width: '100%', maxWidth: '400px' }}
+            >
+              <option value="">-- Choose a component --</option>
+              {parts.filter(p => p.partType !== 'Materials').map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.partType})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedPartIdForRecipe && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '1.5rem',
+              marginTop: '0.5rem',
+            }}>
+              {/* Left Column: Current Recipe list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', textAlign: 'left' }}>
+                <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-gold-light)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Recipe Ingredients
+                </h4>
+                
+                {editingRecipeIngredients.length > 0 ? (
+                  <div style={{
+                    background: 'rgba(0,0,0,0.2)',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    overflow: 'hidden',
+                  }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <th style={{ padding: '0.5rem 0.75rem', color: 'var(--color-text-muted)', textAlign: 'left' }}>Item</th>
+                          <th style={{ padding: '0.5rem 0.75rem', color: 'var(--color-text-muted)', textAlign: 'right', width: '80px' }}>Quantity</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', width: '50px' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {editingRecipeIngredients.map((ing) => (
+                          <tr key={ing.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                            <td style={{ padding: '0.5rem 0.75rem', color: 'var(--color-text-title)', fontWeight: '500' }}>
+                              {ing.name}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: '700', fontVariantNumeric: 'tabular-nums' }}>
+                              {ing.quantity}
+                            </td>
+                            <td style={{ padding: '0.4rem', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                className="ff-btn-danger"
+                                onClick={() => handleRemoveIngredientFromRecipe(ing.name)}
+                                style={{ padding: '0.2rem 0.4rem', height: '24px', display: 'inline-flex', alignItems: 'center' }}
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: '2rem',
+                    textAlign: 'center',
+                    border: '1px dashed rgba(197,160,89,0.15)',
+                    borderRadius: '6px',
+                    color: 'var(--color-text-muted)',
+                    fontSize: '0.82rem',
+                    fontStyle: 'italic',
+                  }}>
+                    No ingredients in recipe. Add some ingredients on the right.
+                  </div>
+                )}
+
+                {/* Save / Clear Buttons */}
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto', paddingTop: '1rem' }}>
+                  <button
+                    type="button"
+                    className="ff-btn glow-active"
+                    onClick={handleSaveRecipe}
+                    disabled={savingRecipe}
+                    style={{ flex: 1, height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
+                  >
+                    {savingRecipe ? <RefreshCw size={14} className="spin" /> : <Save size={14} />}
+                    {savingRecipe ? 'Saving…' : 'Save Recipe'}
+                  </button>
+                </div>
+                {recipeSuccess && (
+                  <div style={{ color: 'var(--color-success)', fontSize: '0.8rem', marginTop: '0.5rem', fontWeight: '500' }}>
+                    {recipeSuccess}
+                  </div>
+                )}
+                {recipeError && (
+                  <div style={{ color: 'var(--color-error)', fontSize: '0.8rem', marginTop: '0.5rem', fontWeight: '500' }}>
+                    {recipeError}
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: Add Ingredient Form */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+                textAlign: 'left',
+                background: 'rgba(255, 255, 255, 0.01)',
+                border: '1px solid rgba(197,160,89,0.08)',
+                padding: '1rem',
+                borderRadius: '6px',
+              }}>
+                <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-gold-light)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Add Ingredient
+                </h4>
+
+                {/* Manual Mode Toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', height: '24px' }}>
+                  <label className="toggle-container">
+                    <input
+                      type="checkbox"
+                      style={{ display: 'none' }}
+                      checked={recipeManualInput}
+                      onChange={(e) => setRecipeManualInput(e.target.checked)}
+                    />
+                    <div className="toggle-switch"></div>
+                    <span style={{ fontSize: '0.75rem', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Enter Custom Name (Manual)
+                    </span>
+                  </label>
+                </div>
+
+                {/* Ingredient Selector / Input */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Ingredient Name</label>
+                  {recipeManualInput ? (
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="e.g. Shark Scale..."
+                      value={recipeManualIngredientName}
+                      onChange={(e) => setRecipeManualIngredientName(e.target.value)}
+                    />
+                  ) : (
+                    <select
+                      className="form-select"
+                      value={newRecipeIngName}
+                      onChange={(e) => setNewRecipeIngName(e.target.value)}
+                      style={{ width: '100%' }}
+                    >
+                      {sheetIngredients.length > 0 ? (
+                        sheetIngredients.map((name) => (
+                          <option key={name} value={name}>{name}</option>
+                        ))
+                      ) : (
+                        <option value="">-- No ingredients found --</option>
+                      )}
+                    </select>
+                  )}
+                  {!recipeManualInput && sheetIngredients.length === 0 && (
+                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.2rem', display: 'block' }}>
+                      Tip: Enable custom name to type manually.
+                    </span>
+                  )}
+                </div>
+
+                {/* Quantity Input */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Quantity Required</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className="ff-btn-secondary"
+                      style={{ padding: '0.3rem 0.6rem', height: '34px' }}
+                      onClick={() => setNewRecipeIngQty(prev => String(Math.max(1, parseInt(prev, 10) - 1)))}
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      className="form-input"
+                      value={newRecipeIngQty}
+                      onChange={(e) => setNewRecipeIngQty(e.target.value)}
+                      style={{ flex: 1, textAlign: 'center' }}
+                    />
+                    <button
+                      type="button"
+                      className="ff-btn-secondary"
+                      style={{ padding: '0.3rem 0.6rem', height: '34px' }}
+                      onClick={() => setNewRecipeIngQty(prev => String((parseInt(prev, 10) || 0) + 1))}
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Add to recipe button */}
+                <button
+                  type="button"
+                  className="ff-btn-secondary"
+                  onClick={handleAddIngredientToRecipe}
+                  style={{ width: '100%', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
+                >
+                  <Plus size={14} /> Add to Recipe
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="ff-card" style={{ marginBottom: '2rem', padding: '1.25rem' }}>
         <h3 style={{ fontSize: '1rem', textAlign: 'left', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
           Database Operations &amp; Backups
@@ -847,7 +1335,7 @@ export default function AdminPanel({
         </h3>
 
         <div style={{ display: 'flex', flexDirection: 'row', gap: '2rem', flexWrap: 'wrap' }}>
-          
+
           <div style={{ flex: '2 1 400px', minWidth: '300px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
               <h4 style={{ fontSize: '0.9rem', color: 'var(--color-text-title)', margin: 0, textAlign: 'left', fontFamily: 'var(--font-title)' }}>
@@ -865,7 +1353,7 @@ export default function AdminPanel({
                 </button>
               )}
             </div>
-            
+
             {activeCrafts.length === 0 ? (
               <div style={{
                 padding: '1.5rem',
@@ -924,11 +1412,11 @@ export default function AdminPanel({
             <h4 style={{ fontSize: '0.9rem', color: 'var(--color-text-title)', marginBottom: '1rem', textAlign: 'left', fontFamily: 'var(--font-title)' }}>
               Declare Crafting Task
             </h4>
-            
+
             <form onSubmit={handleAddActiveCraft} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ fontSize: '0.75rem' }}>Select Ingredient</label>
-                
+
                 {isManualInput ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <input
@@ -979,7 +1467,7 @@ export default function AdminPanel({
                   </div>
                 )}
               </div>
-              
+
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ fontSize: '0.75rem' }}>Quantity Being Crafted</label>
                 <input
@@ -1034,12 +1522,12 @@ export default function AdminPanel({
         </h3>
 
         <div style={{ display: 'flex', flexDirection: 'row', gap: '2rem', flexWrap: 'wrap' }}>
-          
+
           <div style={{ flex: '2 1 400px', minWidth: '300px' }}>
             <h4 style={{ fontSize: '0.9rem', color: 'var(--color-text-title)', marginBottom: '0.75rem', textAlign: 'left', fontFamily: 'var(--font-title)' }}>
               Active Discount Tiers
             </h4>
-            
+
             {discounts.length === 0 ? (
               <div style={{
                 padding: '1.5rem',
@@ -1083,7 +1571,7 @@ export default function AdminPanel({
             <h4 style={{ fontSize: '0.9rem', color: 'var(--color-text-title)', marginBottom: '1rem', textAlign: 'left', fontFamily: 'var(--font-title)' }}>
               Add Discount Tier
             </h4>
-            
+
             <form onSubmit={handleAddDiscount} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ fontSize: '0.75rem' }}>Threshold (Sets)</label>
@@ -1096,7 +1584,7 @@ export default function AdminPanel({
                   onChange={(e) => setNewThreshold(e.target.value)}
                 />
               </div>
-              
+
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ fontSize: '0.75rem' }}>Discount Percentage</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1200,3 +1688,76 @@ export default function AdminPanel({
     </div>
   );
 }
+
+function parseSpreadsheetRecipes(text: string, parts: SubmarinePart[]): PartIngredient[] {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const recipes: PartIngredient[] = [];
+
+  for (let i = 0; i < lines.length; i += 2) {
+    const headerLine = lines[i];
+    const qtyLine = lines[i + 1];
+    if (!qtyLine) break;
+
+    const headers = headerLine.split('\t').map(h => h.trim());
+    const qties = qtyLine.split('\t').map(q => q.trim());
+
+    const rawPartName = headers[0];
+    if (!rawPartName) continue;
+
+    // Normalize part name
+    let cleanPartName = rawPartName
+      .replace(/Pressure Hull/gi, 'Hull')
+      .replace(/Coelananth/gi, 'Coelacanth')
+      .trim();
+
+    // Find the part ID
+    const part = parts.find(p => p.name.toLowerCase() === cleanPartName.toLowerCase());
+    if (!part) continue;
+
+    const ingredientMap: Record<string, number> = {};
+
+    const maxCols = Math.max(headers.length, qties.length);
+    for (let col = 1; col < maxCols; col++) {
+      const ingName = headers[col];
+      const qtyStr = qties[col];
+      if (!ingName || ingName.toLowerCase() === 'item quantity' || !qtyStr) continue;
+
+      const qty = parseInt(qtyStr, 10);
+      if (isNaN(qty) || qty <= 0) continue;
+
+      const normalizedIngName = ingName.trim();
+      let finalIngName = normalizedIngName;
+      if (
+        (normalizedIngName.toLowerCase() === 'whale-class' ||
+         normalizedIngName.toLowerCase() === 'shark-class' ||
+         normalizedIngName.toLowerCase() === 'unkiu-class' ||
+         normalizedIngName.toLowerCase() === 'coelacanth-class' ||
+         normalizedIngName.toLowerCase() === 'syldra-class')
+      ) {
+        finalIngName = `${normalizedIngName} ${part.partType}`;
+      } else if (normalizedIngName.toLowerCase() === 'coelananth-class') {
+        finalIngName = `Coelacanth-class ${part.partType}`;
+      }
+
+      const key = finalIngName.toLowerCase();
+      const existingKey = Object.keys(ingredientMap).find(k => k.toLowerCase() === key);
+      if (existingKey) {
+        ingredientMap[existingKey] += qty;
+      } else {
+        ingredientMap[finalIngName] = qty;
+      }
+    }
+
+    recipes.push({
+      partId: part.id,
+      partName: part.name,
+      ingredients: Object.entries(ingredientMap).map(([name, quantity]) => ({
+        name,
+        quantity
+      }))
+    });
+  }
+
+  return recipes;
+}
+

@@ -494,3 +494,10 @@ input[type="checkbox"]:checked + .toggle-switch::after {
 .glow-active {
   animation: pulseGlow 2s infinite ease-in-out;
 }
+
+/* Order Tracker responsive two-column grid */
+@media (max-width: 768px) {
+  .order-tracker-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { loadSubmarineParts, loadBulkDiscounts } from './SubmarineData';
+import { loadSubmarineParts, loadBulkDiscounts, loadPartIngredients, loadOrders } from './SubmarineData';
 import ForCrafters from './components/ForCrafters';
 import SetBuilder from './components/SetBuilder';
 import AdminPanel from './components/AdminPanel';
 import { Anchor, Hammer, Lock, RefreshCw, Wrench } from 'lucide-react';
-import { SubmarinePart, BulkDiscount } from './types';
+import { SubmarinePart, BulkDiscount, PartIngredient, Order } from './types';
 import './App.css';
  
 import { auth, isFirebaseConfigured, allowedAdminEmails } from './firebase';
@@ -23,6 +23,8 @@ function getTabFromHash(): TabId {
 function App() {
   const [parts, setParts] = useState<SubmarinePart[]>([]);
   const [discounts, setDiscounts] = useState<BulkDiscount[]>([]);
+  const [partIngredients, setPartIngredients] = useState<PartIngredient[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTabState] = useState<TabId>(getTabFromHash);
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
@@ -40,12 +42,16 @@ function App() {
   const fetchData = async (): Promise<void> => {
     setLoading(true);
     try {
-      const [partsData, discountsData] = await Promise.all([
+      const [partsData, discountsData, ingredientsData, ordersData] = await Promise.all([
         loadSubmarineParts(),
         loadBulkDiscounts(),
+        loadPartIngredients(),
+        loadOrders(),
       ]);
       setParts(partsData);
       setDiscounts(discountsData);
+      setPartIngredients(ingredientsData);
+      setOrders(ordersData);
     } catch (e) {
       console.error(e);
     } finally {
@@ -154,7 +160,7 @@ function App() {
           </div>
         ) : (
           <>
-            {activeTab === 'builder' && <SetBuilder parts={parts} discounts={discounts} />}
+            {activeTab === 'builder' && <SetBuilder parts={parts} discounts={discounts} partIngredients={partIngredients} orders={orders} />}
             {activeTab === 'crafters' && <ForCrafters />}
             {activeTab === 'admin' && (
               <AdminPanel
@@ -163,6 +169,7 @@ function App() {
                 onUpdatePart={handleUpdatePart}
                 discounts={discounts}
                 onRefreshDiscounts={fetchData}
+                partIngredients={partIngredients}
               />
             )}
           </>

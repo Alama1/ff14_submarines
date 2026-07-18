@@ -1,6 +1,6 @@
 import { formatGil, CLASSES } from '../SubmarineData';
-import { Check, Hammer, Plus, Minus } from 'lucide-react';
-import { SubmarinePart } from '../types';
+import { Hammer, Plus, Minus } from 'lucide-react';
+import { SubmarinePart, PartIngredient } from '../types';
 
 interface PartSelectorProps {
   partType: string;
@@ -9,6 +9,8 @@ interface PartSelectorProps {
   onSelectPart: (part: SubmarinePart | null) => void;
   quantity: number;
   onQuantityChange: (qty: number) => void;
+  availableStock?: Record<string, number>;
+  partIngredients?: PartIngredient[];
 }
 
 export default function PartSelector({
@@ -18,6 +20,8 @@ export default function PartSelector({
   onSelectPart,
   quantity,
   onQuantityChange,
+  availableStock = {},
+  partIngredients = [],
 }: PartSelectorProps) {
   const currentClassKey = selectedPart ? selectedPart.classKey : '';
   const currentIsModified = selectedPart ? selectedPart.isModified : false;
@@ -48,8 +52,26 @@ export default function PartSelector({
     if (!isNaN(n) && n >= 0) onQuantityChange(n);
   };
 
-  const inStock = selectedPart && selectedPart.stock > 0;
+  const physicalStock = selectedPart ? selectedPart.stock : 0;
   const linePrice = selectedPart ? selectedPart.price * quantity : 0;
+
+  // Calculate craftable quantity from ingredients
+  const recipe = partIngredients.find(pi => pi.partId === (selectedPart?.id || ''));
+  let craftableCount = 0;
+  let hasRecipe = false;
+
+  if (selectedPart && recipe && recipe.ingredients.length > 0) {
+    hasRecipe = true;
+    let minCraftable = Infinity;
+    recipe.ingredients.forEach((ing) => {
+      const avail = availableStock[ing.name.toLowerCase()] ?? 0;
+      const count = Math.floor(avail / ing.quantity);
+      if (count < minCraftable) {
+        minCraftable = count;
+      }
+    });
+    craftableCount = minCraftable === Infinity ? 0 : Math.max(0, minCraftable);
+  }
 
   return (
     <div className="ff-card-framed fade-in" style={{ padding: '1.25rem' }}>
@@ -164,14 +186,21 @@ export default function PartSelector({
                 </span>
               )}
             </div>
-            <div>
-              {inStock ? (
-                <span className="badge badge-success" style={{ gap: '0.2rem', padding: '0.15rem 0.45rem', fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
-                  <Check size={8} /> In Stock ({selectedPart.stock})
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+              {physicalStock > 0 && (
+                <span className="badge badge-success" style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
+                  In Stock ({physicalStock})
                 </span>
-              ) : (
-                <span className="badge badge-warning" style={{ gap: '0.2rem', padding: '0.15rem 0.45rem', fontSize: '0.65rem', opacity: 0.9, whiteSpace: 'nowrap' }}>
-                  <Hammer size={8} /> Order Only
+              )}
+              {hasRecipe && craftableCount > 0 && (
+                <span className="badge badge-info" style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', whiteSpace: 'nowrap', background: 'rgba(96,165,250,0.15)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.3)' }}>
+                  <Hammer size={8} style={{ marginRight: '2px', verticalAlign: 'middle' }} />
+                  Craftable ({craftableCount})
+                </span>
+              )}
+              {physicalStock === 0 && craftableCount === 0 && (
+                <span className="badge badge-warning" style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', opacity: 0.9, whiteSpace: 'nowrap' }}>
+                  Out of Stock
                 </span>
               )}
             </div>

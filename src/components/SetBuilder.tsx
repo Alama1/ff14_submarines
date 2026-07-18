@@ -1,12 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import PartSelector from './PartSelector';
 import { formatGil, PART_TYPES, ALL_PART_TYPES } from '../SubmarineData';
 import { Copy, Check, Info, Anchor, Plus, Minus, Tag } from 'lucide-react';
-import { SubmarinePart, PartType, SelectionMap, BulkDiscount } from '../types';
+import { SubmarinePart, PartType, SelectionMap, BulkDiscount, PartIngredient, Order } from '../types';
+import { useStockData } from '../hooks/useStockData';
+import { computeAvailableStock } from '../utils/stockCalc';
 
 interface SetBuilderProps {
   parts?: SubmarinePart[];
   discounts?: BulkDiscount[];
+  partIngredients?: PartIngredient[];
+  orders?: Order[];
 }
 
 type QuantityMap = Record<PartType, number>;
@@ -72,10 +76,13 @@ const PRESETS: PresetDefinition[] = [
   },
 ];
 
-export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderProps) {
+export default function SetBuilder({ parts = [], discounts = [], partIngredients = [], orders = [] }: SetBuilderProps) {
   const [builds, setBuilds] = useState<SubmarineBuild[]>([]);
   const [activeBuildId, setActiveBuildId] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
+
+  // Background live stock fetch (shared cache with ForCrafters)
+  const { stockItems } = useStockData();
 
   const createDefaultBuild = (id: string, name: string): SubmarineBuild => {
     const initialSelections: SelectionMap = { Hull: null, Stern: null, Bow: null, Bridge: null, Materials: null };
@@ -292,6 +299,57 @@ export default function SetBuilder({ parts = [], discounts = [] }: SetBuilderPro
   const anySelected = builds.some((b) =>
     PART_TYPES.some((type) => b.selections[type] !== null && b.quantities[type] > 0) || b.quantities.Materials > 0
   );
+
+  // ── Live stock availability ─────────────────────────────────────────────────
+
+  const availableStock = useMemo(
+    () => computeAvailableStock(stockItems, orders, partIngredients),
+    [stockItems, orders, partIngredients]
+  );
+
+  // stockResult removed since availability is checked per-part
+
+  // Compute parts that are insufficient (physical stock + craftable is less than requested quantity)
+  const insufficientParts = useMemo(() => {
+    const list: { partName: string; requested: number; available: number }[] = [];
+
+    builds.forEach((b) => {
+      ALL_PART_TYPES.forEach((type) => {
+        const part = b.selections[type];
+        const qty = b.quantities[type];
+        if (!part || qty <= 0) return;
+
+        const physical = part.stock;
+        
+        // Find recipe
+        const recipe = partIngredients.find(pi => pi.partId === part.id);
+        let craftable = 0;
+        if (recipe && recipe.ingredients.length > 0) {
+          let minCraftable = Infinity;
+          recipe.ingredients.forEach((ing) => {
+            const avail = availableStock[ing.name.toLowerCase()] ?? 0;
+            const count = Math.floor(avail / ing.quantity);
+            if (count < minCraftable) minCraftable = count;
+          });
+          craftable = minCraftable === Infinity ? 0 : Math.max(0, minCraftable);
+        }
+
+        const totalAvail = physical + craftable;
+        if (totalAvail < qty) {
+          list.push({
+            partName: part.name,
+            requested: qty,
+            available: totalAvail
+          });
+        }
+      });
+    });
+
+    return list;
+  }, [builds, partIngredients, availableStock]);
+
+  const hasInsufficientParts = insufficientParts.length > 0;
+  // ───────────────────────────────────────────────────────────────────────────
 
   const generateCopyText = (): string => {
     const activeBuildsWithItems = builds.filter((b) =>
@@ -633,6 +691,8 @@ Total Price: ${priceText}`;
                 onSelectPart={(part) => handleSelect(type, part)}
                 quantity={quantities[type]}
                 onQuantityChange={(qty) => handleQuantityChange(type, qty)}
+                availableStock={availableStock}
+                partIngredients={partIngredients}
               />
             ))}
           </div>
@@ -666,6 +726,49 @@ Total Price: ${priceText}`;
               </div>
             );
           })()}
+
+          {/* ── Crafting Stock Availability Banner ── */}
+          {anySelected && (
+            <div className="ff-alert" style={{
+              textAlign: 'left',
+              margin: '0 0 1.5rem 0',
+              padding: '1.25rem',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0.75rem',
+              borderLeft: `4px solid ${hasInsufficientParts ? 'var(--color-gold)' : 'var(--color-success)'}`,
+              background: hasInsufficientParts
+                ? 'linear-gradient(135deg, rgba(197,160,89,0.04) 0%, rgba(21,31,51,0.2) 100%)'
+                : 'linear-gradient(135deg, rgba(16,185,129,0.04) 0%, rgba(21,31,51,0.2) 100%)',
+              color: 'var(--color-text-main)',
+            }}>
+              {hasInsufficientParts ? (
+                <>
+                  <Info size={18} style={{ color: 'var(--color-gold)', flexShrink: 0, marginTop: '0.1rem' }} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', width: '100%' }}>
+                    <strong style={{ fontSize: '0.9rem', color: 'var(--color-gold-light)' }}>
+                      Custom Crafting Notice
+                    </strong>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
+                      Some of the parts that you selected can't be crafted instantly, so it may take a bit longer to fulfill. Everything else looks fine!
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Check size={18} style={{ color: 'var(--color-success)', flexShrink: 0, marginTop: '0.1rem' }} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', width: '100%' }}>
+                    <strong style={{ fontSize: '0.9rem', color: 'var(--color-success)' }}>
+                      All Materials Available
+                    </strong>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
+                      All materials for your craft are in-stock, so craft will be quick!
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Summary card */}
           <div className="ff-card-framed" style={{
