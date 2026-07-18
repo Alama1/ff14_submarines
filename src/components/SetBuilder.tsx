@@ -313,7 +313,7 @@ export default function SetBuilder({ parts = [], discounts = [], partIngredients
     const parts = ALL_PART_TYPES
       .map((type) => ({
         partId: activeBuild.selections[type]?.id || '',
-        quantity: activeBuild.quantities[type],
+        quantity: activeBuild.quantities[type] > 0 ? 1 : 0,
       }))
       .filter((p) => p.partId && p.quantity > 0);
 
@@ -712,7 +712,6 @@ Total Price: ${priceText}`;
                 onSelectPart={(part) => handleSelect(type, part)}
                 quantity={quantities[type]}
                 onQuantityChange={(qty) => handleQuantityChange(type, qty)}
-                availableStock={availableStock}
                 partIngredients={partIngredients}
                 craftableSets={setCraftableCount.craftable}
               />

@@ -9,7 +9,6 @@ interface PartSelectorProps {
   onSelectPart: (part: SubmarinePart | null) => void;
   quantity: number;
   onQuantityChange: (qty: number) => void;
-  availableStock?: Record<string, number>;
   partIngredients?: PartIngredient[];
   craftableSets?: number;
 }
@@ -21,7 +20,6 @@ export default function PartSelector({
   onSelectPart,
   quantity,
   onQuantityChange,
-  availableStock = {},
   partIngredients = [],
   craftableSets,
 }: PartSelectorProps) {
@@ -29,7 +27,6 @@ export default function PartSelector({
   const currentIsModified = selectedPart ? selectedPart.isModified : false;
 
   const handleClassChange = (classKey: string) => {
-    // If no part was selected, default isModified to false
     const isMod = selectedPart ? currentIsModified : false;
     const matchingPart = parts.find(
       (p) => p.partType === partType && p.classKey === classKey && p.isModified === isMod
@@ -56,29 +53,7 @@ export default function PartSelector({
 
   const physicalStock = selectedPart ? selectedPart.stock : 0;
   const linePrice = selectedPart ? selectedPart.price * quantity : 0;
-
-  // Calculate craftable quantity from ingredients
-  const recipe = partIngredients.find(pi => pi.partId === (selectedPart?.id || ''));
-  let craftableCount = 0;
-  let hasRecipe = false;
-
-  if (selectedPart && recipe && recipe.ingredients.length > 0) {
-    const NPCTrades = ["walnut lumber", "iron rivets", "mythril rivets", "oak lumber", "steel plate", "holy cedar lumber", "mythrite ingot", "titanium ingot", "steel rivets", "steel ingot", "mythril ingot", "clear glass lens", "wing glue", "enchanted hardsilver ink", "hardsilver ingot", "mythrite rivets"];
-    hasRecipe = true;
-    let minCraftable = Infinity;
-    recipe.ingredients.forEach((ing) => {
-      let avail = availableStock[ing.name.toLowerCase()] ?? 0;
-      if (NPCTrades.includes(ing.name.toLowerCase())) {
-        avail = Infinity
-      }
-      console.log(ing.name, avail)
-      const count = Math.floor(avail / ing.quantity);
-      if (count < minCraftable) {
-        minCraftable = count;
-      }
-    });
-    craftableCount = minCraftable === Infinity ? 0 : Math.max(0, minCraftable);
-  }
+  const hasRecipe = partIngredients.some(pi => pi.partId === selectedPart?.id);
 
   return (
     <div className="ff-card-framed fade-in" style={{ padding: '1.25rem' }}>
@@ -183,6 +158,8 @@ export default function PartSelector({
             borderRadius: '4px 4px 0 0',
             border: '1px solid rgba(255, 255, 255, 0.05)',
             borderBottom: 'none',
+            flexDirection: 'column',
+            gap: '0.35rem',
           }}>
             <div className="gil-price" style={{ fontSize: '1rem' }}>
               <span>{formatGil(selectedPart.price).replace(' Gil', '')}</span>
@@ -199,19 +176,19 @@ export default function PartSelector({
                   In Stock ({physicalStock})
                 </span>
               )}
-              {hasRecipe && craftableSets !== undefined && craftableSets > 0 && (
+              {hasRecipe && craftableSets !== undefined && craftableSets > 0 && craftableSets >= quantity && (
                 <span className="badge badge-info" style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', whiteSpace: 'nowrap', background: 'rgba(96,165,250,0.15)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.3)' }}>
                   <Hammer size={8} style={{ marginRight: '2px', verticalAlign: 'middle' }} />
-                  Craftable ({craftableSets} sets)
+                  In stock ({craftableSets} sets)
                 </span>
               )}
-              {hasRecipe && craftableSets === undefined && craftableCount > 0 && (
-                <span className="badge badge-info" style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', whiteSpace: 'nowrap', background: 'rgba(96,165,250,0.15)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.3)' }}>
+              {hasRecipe && craftableSets !== undefined && craftableSets > 0 && craftableSets < quantity && (
+                <span className="badge badge-info" style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', whiteSpace: 'nowrap', background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
                   <Hammer size={8} style={{ marginRight: '2px', verticalAlign: 'middle' }} />
-                  Craftable ({craftableCount})
+                  Only {craftableSets}/{quantity} in stock
                 </span>
               )}
-              {physicalStock === 0 && (craftableSets !== undefined ? craftableSets === 0 : craftableCount === 0) && (
+              {physicalStock === 0 && (!hasRecipe || craftableSets === 0) && (
                 <span className="badge badge-warning" style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', opacity: 0.9, whiteSpace: 'nowrap' }}>
                   Out of Stock
                 </span>
