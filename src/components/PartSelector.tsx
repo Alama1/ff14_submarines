@@ -61,10 +61,15 @@ export default function PartSelector({
   let hasRecipe = false;
 
   if (selectedPart && recipe && recipe.ingredients.length > 0) {
+    const NPCTrades = ["walnut lumber", "iron rivets", "mythril rivets", "oak lumber", "steel plate", "holy cedar lumber", "mythrite ingot", "titanium ingot", "steel rivets", "steel ingot", "mythril ingot", "clear glass lens", "wing glue", "enchanted hardsilver ink", "hardsilver ingot", "mythrite rivets"];
     hasRecipe = true;
     let minCraftable = Infinity;
     recipe.ingredients.forEach((ing) => {
-      const avail = availableStock[ing.name.toLowerCase()] ?? 0;
+      let avail = availableStock[ing.name.toLowerCase()] ?? 0;
+      if (NPCTrades.includes(ing.name.toLowerCase())) {
+        avail = Infinity
+      }
+      console.log(ing.name, avail)
       const count = Math.floor(avail / ing.quantity);
       if (count < minCraftable) {
         minCraftable = count;
