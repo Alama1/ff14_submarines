@@ -1122,7 +1122,7 @@ export default function OrderTracker({ parts }: OrderTrackerProps) {
   };
 
   const visibleOrders =
-    filterStatus === 'all' ? orders : orders.filter((o) => o.status === filterStatus);
+    filterStatus === 'all' ? orders.filter((order) => order.status !== "completed") : orders.filter((o) => o.status === filterStatus);
 
   const statusCounts = orders.reduce<Record<string, number>>((acc, o) => {
     acc[o.status] = (acc[o.status] || 0) + 1;
@@ -1422,7 +1422,7 @@ export default function OrderTracker({ parts }: OrderTrackerProps) {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             {([['all', 'All'], ...ALL_STATUSES.map((s) => [s, STATUS_CONFIG[s].label])] as [string, string][]).map(([val, label]) => {
-              const count = val === 'all' ? orders.length : (statusCounts[val] || 0);
+              const count = val === 'all' ? orders.filter((order) => order.status !== "completed").length : (statusCounts[val] || 0);
               const isActive = filterStatus === val;
               return (
                 <button
