@@ -1,4 +1,4 @@
-import { useState, useMemo, FormEvent, ChangeEvent, useEffect } from 'react';
+import { useState, useMemo, FormEvent, ChangeEvent, useEffect, useRef } from 'react';
 import {
   ALL_PART_TYPES,
   generateDefaultParts,
@@ -45,14 +45,6 @@ interface AdminEditRowProps {
 function AdminEditRow({ part, status, onAdjustStock, onFieldChange }: AdminEditRowProps) {
   const [stock, setStock] = useState<string>(String(part.stock));
   const [price, setPrice] = useState<string>(String(part.price));
-
-  useEffect(() => {
-    setStock(String(part.stock));
-  }, [part.stock]);
-
-  useEffect(() => {
-    setPrice(String(part.price));
-  }, [part.price]);
 
   const handleBlur = (field: keyof SubmarinePart, localValue: string, originalValue: number) => {
     let parsedValue = parseInt(localValue, 10);
@@ -163,14 +155,6 @@ interface AdminDiscountRowProps {
 function AdminDiscountRow({ discount, status, onFieldChange, onDelete }: AdminDiscountRowProps) {
   const [threshold, setThreshold] = useState<string>(String(discount.threshold));
   const [percent, setPercent] = useState<string>(String(discount.discountPercent));
-
-  useEffect(() => {
-    setThreshold(String(discount.threshold));
-  }, [discount.threshold]);
-
-  useEffect(() => {
-    setPercent(String(discount.discountPercent));
-  }, [discount.discountPercent]);
 
   const handleBlur = (field: 'threshold' | 'discountPercent', localValue: string, originalValue: number) => {
     let parsedValue = parseInt(localValue, 10);
@@ -299,23 +283,22 @@ export default function AdminPanel({
   const [bulkImportStatus, setBulkImportStatus] = useState<string>('');
   const [bulkImportError, setBulkImportError] = useState<string>('');
 
-  useEffect(() => {
-    if (selectedPartIdForRecipe) {
-      const match = partIngredients.find(pi => pi.partId === selectedPartIdForRecipe);
-      if (match) {
-        setEditingRecipeIngredients([...match.ingredients]);
-      } else {
-        setEditingRecipeIngredients([]);
-      }
+const handleRecipePartSelect = (partId: string) => {
+    setSelectedPartIdForRecipe(partId);
+    if (partId) {
+      const match = partIngredients.find(pi => pi.partId === partId);
+      setEditingRecipeIngredients(match ? [...match.ingredients] : []);
       setRecipeError('');
       setRecipeSuccess('');
     } else {
       setEditingRecipeIngredients([]);
     }
-  }, [selectedPartIdForRecipe, partIngredients]);
+  };
 
+const sheetIngInitRef = useRef(false);
   useEffect(() => {
-    if (sheetIngredients.length > 0 && !newRecipeIngName) {
+    if (!sheetIngInitRef.current && sheetIngredients.length > 0 && !newRecipeIngName) {
+      sheetIngInitRef.current = true;
       setNewRecipeIngName(sheetIngredients[0]);
     }
   }, [sheetIngredients, newRecipeIngName]);
@@ -360,8 +343,10 @@ export default function AdminPanel({
     }
   };
 
+const authInitRef = useRef(false);
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !authInitRef.current) {
+      authInitRef.current = true;
       fetchActiveCrafts();
       fetchSheetIngredients();
     }
@@ -1000,7 +985,7 @@ export default function AdminPanel({
         }}>
           <Beaker size={18} /> Part Ingredients Editor
         </h3>
-        
+
         <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem', textAlign: 'left' }}>
           Define the raw materials required to craft each submarine component. These recipes are used to calculate real-time craftability in the Set Builder.
         </p>
@@ -1069,7 +1054,7 @@ export default function AdminPanel({
             <select
               className="form-select"
               value={selectedPartIdForRecipe}
-              onChange={(e) => setSelectedPartIdForRecipe(e.target.value)}
+              onChange={(e) => handleRecipePartSelect(e.target.value)}
               style={{ width: '100%', maxWidth: '400px' }}
             >
               <option value="">-- Choose a component --</option>
@@ -1093,7 +1078,7 @@ export default function AdminPanel({
                 <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-gold-light)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Recipe Ingredients
                 </h4>
-                
+
                 {editingRecipeIngredients.length > 0 ? (
                   <div style={{
                     background: 'rgba(0,0,0,0.2)',
@@ -1554,7 +1539,7 @@ export default function AdminPanel({
                   <tbody>
                     {discounts.map((discount) => (
                       <AdminDiscountRow
-                        key={discount.id}
+                        key={discount.id + '-' + discount.threshold + '-' + discount.discountPercent}
                         discount={discount}
                         status={updatingDiscountIds[discount.id]}
                         onFieldChange={handleDiscountFieldChange}
@@ -1674,7 +1659,7 @@ export default function AdminPanel({
           <tbody>
             {filteredParts.map((part) => (
               <AdminEditRow
-                key={part.id}
+                key={part.id + '-' + part.stock + '-' + part.price}
                 part={part}
                 status={updatingIds[part.id]}
                 onAdjustStock={handleAdjustStock}
@@ -1760,4 +1745,3 @@ function parseSpreadsheetRecipes(text: string, parts: SubmarinePart[]): PartIngr
 
   return recipes;
 }
-

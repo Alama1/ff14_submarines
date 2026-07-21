@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import PartSelector from './PartSelector';
 import { formatGil, PART_TYPES, ALL_PART_TYPES } from '../SubmarineData';
 import { Copy, Check, Info, Anchor, Plus, Minus, Tag, Hammer } from 'lucide-react';
@@ -76,56 +76,50 @@ const PRESETS: PresetDefinition[] = [
   },
 ];
 
+function createDefaultBuild(id: string, name: string, parts: SubmarinePart[]): SubmarineBuild {
+  const initialSelections: SelectionMap = { Hull: null, Stern: null, Bow: null, Bridge: null, Materials: null };
+  if (parts.length > 0) {
+    PART_TYPES.forEach((type: PartType) => {
+      const defaultPart = parts.find(
+        (p) => p.partType === type && p.classKey === 'shark' && !p.isModified
+      );
+      initialSelections[type] = defaultPart ?? parts.find((p) => p.partType === type) ?? null;
+    });
+    initialSelections.Materials = parts.find((p) => p.partType === 'Materials') ?? null;
+  }
+  return {
+    id,
+    name,
+    selections: initialSelections,
+    quantities: {
+      Hull: 1,
+      Stern: 1,
+      Bow: 1,
+      Bridge: 1,
+      Materials: 0,
+    },
+    setCount: 1,
+  };
+}
+
 export default function SetBuilder({ parts = [], discounts = [], partIngredients = [], orders = [] }: SetBuilderProps) {
-  const [builds, setBuilds] = useState<SubmarineBuild[]>([]);
-  const [activeBuildId, setActiveBuildId] = useState<string>('');
+  const [builds, setBuilds] = useState<SubmarineBuild[]>(() =>
+    parts.length > 0 ? [createDefaultBuild('1', 'Build 1', parts)] : []
+  );
+  const [activeBuildId, setActiveBuildId] = useState<string>('1');
   const [copied, setCopied] = useState<boolean>(false);
 
   // Background live stock fetch (shared cache with ForCrafters)
   const { stockItems } = useStockData();
 
-  const createDefaultBuild = (id: string, name: string): SubmarineBuild => {
-    const initialSelections: SelectionMap = { Hull: null, Stern: null, Bow: null, Bridge: null, Materials: null };
-    if (parts.length > 0) {
-      PART_TYPES.forEach((type: PartType) => {
-        const defaultPart = parts.find(
-          (p) => p.partType === type && p.classKey === 'shark' && !p.isModified
-        );
-        initialSelections[type] = defaultPart ?? parts.find((p) => p.partType === type) ?? null;
-      });
-      initialSelections.Materials = parts.find((p) => p.partType === 'Materials') ?? null;
-    }
-    return {
-      id,
-      name,
-      selections: initialSelections,
-      quantities: {
-        Hull: 1,
-        Stern: 1,
-        Bow: 1,
-        Bridge: 1,
-        Materials: 0,
-      },
-      setCount: 1,
-    };
-  };
-
-  useEffect(() => {
-    if (parts.length > 0 && builds.length === 0) {
-      const defaultBuild = createDefaultBuild('1', 'Build 1');
-      setBuilds([defaultBuild]);
-      setActiveBuildId('1');
-    }
-  }, [parts]);
-
-  const activeBuild = builds.find((b) => b.id === activeBuildId) || createDefaultBuild('temp', 'Temp');
+  const activeBuild = builds.find((b) => b.id === activeBuildId) || createDefaultBuild('temp', 'Temp', parts);
   const selections = activeBuild.selections;
   const quantities = activeBuild.quantities;
   const setCount = activeBuild.setCount;
 
   const handleAddBuild = () => {
     const nextId = (builds.reduce((max, b) => Math.max(max, parseInt(b.id, 10) || 0), 0) + 1).toString();
-    const newBuild = createDefaultBuild(nextId, `Build ${nextId}`);
+    const newBuild = createDefaultBuild(nextId, `Build ${nextId}`, parts);
     setBuilds([...builds, newBuild]);
     setActiveBuildId(nextId);
   };

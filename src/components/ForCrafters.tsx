@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Wrench, RefreshCw, Hammer, AlertTriangle, ExternalLink, MessageSquare, Clock, Info, Zap } from 'lucide-react';
 import { loadActiveCrafts } from '../SubmarineData';
 import { ActiveCraft } from '../types';
@@ -99,8 +99,13 @@ export default function ForCrafters() {
     }
   }, []);
 
-
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const didFetch = useRef(false);
+  useEffect(() => {
+    if (!didFetch.current) {
+      didFetch.current = true;
+      fetchData();
+    }
+  }, [fetchData]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -434,6 +439,18 @@ export default function ForCrafters() {
                     </tr>
                   )}
                   {items.map((item, idx) => {
+                    const NPCTrades = new Set([
+                      "walnut lumber", "iron rivets", "mythril rivets", "oak lumber",
+                      "steel plate", "holy cedar lumber", "mythrite ingot", "titanium ingot",
+                      "steel rivets", "steel ingot", "mythril ingot", "clear glass lens",
+                      "wing glue", "enchanted hardsilver ink", "hardsilver ingot", "mythrite rivets",
+                    ]);
+                    const isNPCTrade = NPCTrades.has(item.ingredient.toLowerCase());
+                    if (isNPCTrade) {
+                      item.stock = item.totalQty;
+                      item.missing = 0;
+                    };
+
                     return (
                       <tr
                         key={`${item.ingredient}-${idx}`}
@@ -450,7 +467,7 @@ export default function ForCrafters() {
                             <span>{item.ingredient}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                             {(() => {
-                              const agg = craftsByIngredient[item.ingredient];
+                                const agg = craftsByIngredient[item.ingredient];
                               if (!agg) return null;
                               const isFull = agg.totalQty >= item.missing;
                               return (

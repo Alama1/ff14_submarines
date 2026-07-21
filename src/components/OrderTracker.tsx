@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   loadOrders,
   saveOrder,
@@ -27,6 +27,8 @@ import {
   Minus,
   Calendar,
 } from 'lucide-react';
+
+function getTimestamp(): number { return Date.now(); }
 
 interface OrderTrackerProps {
   parts: SubmarinePart[];
@@ -223,13 +225,7 @@ function OrderRow({ order, onStatusChange, onNotesChange, onFulfillmentChange, o
   const [fulfillmentDirty, setFulfillmentDirty] = useState(false);
   const [savingFulfillment, setSavingFulfillment] = useState(false);
 
-  useEffect(() => {
-    setLocalFulfillmentDate(order.fulfillmentDate || 'ASAP');
-    setLocalFulfillmentType((order.fulfillmentDate || 'ASAP') === 'ASAP' ? 'asap' : 'date');
-    setFulfillmentDirty(false);
-  }, [order.fulfillmentDate]);
-
-  const handleSaveFulfillment = async () => {
+    const handleSaveFulfillment = async () => {
     setSavingFulfillment(true);
     await onFulfillmentChange(order.id, localFulfillmentDate);
     setSavingFulfillment(false);
@@ -500,11 +496,11 @@ interface ManualOrderFormProps {
 }
 
 function ManualOrderForm({ parts, clientName, orderNotes, fulfillmentDate, onSaved, onError, onSuccess }: ManualOrderFormProps) {
-  const mkId = () => Math.random().toString(36).slice(2);
-
-  const [builds, setBuilds] = useState<ManualBuild[]>([
-    { id: mkId(), buildName: 'Build 1', items: [] },
+  const [builds, setBuilds] = useState<ManualBuild[]>(() => [
+    { id: '1', buildName: 'Build 1', items: [] },
   ]);
+  const nextIdRef = useRef(2);
+  const mkId = () => String(nextIdRef.current++);
   // Per-build "add item" row state
   const [newPartId, setNewPartId] = useState<Record<string, string>>({});
   const [newQty, setNewQty] = useState<Record<string, string>>({});
@@ -600,7 +596,7 @@ function ManualOrderForm({ parts, clientName, orderNotes, fulfillmentDate, onSav
       buildName: build.buildName,
     }));
 
-    const now = Date.now();
+    const now = getTimestamp();
     const newOrder: Omit<Order, 'id'> = {
       clientName: clientName.trim(),
       rawText: '[Manual Order]',
@@ -1038,8 +1034,12 @@ export default function OrderTracker({ parts }: OrderTrackerProps) {
     }
   }, []);
 
+  const ordersFetchedRef = useRef(false);
   useEffect(() => {
-    fetchOrders();
+    if (!ordersFetchedRef.current) {
+      ordersFetchedRef.current = true;
+      fetchOrders();
+    }
   }, [fetchOrders]);
 
   const handleParse = () => {
@@ -1061,7 +1061,7 @@ export default function OrderTracker({ parts }: OrderTrackerProps) {
       return;
     }
     setSavingOrder(true);
-    const now = Date.now();
+    const now = getTimestamp();
     const newOrder: Omit<Order, 'id'> = {
       clientName: clientName.trim(),
       rawText: pasteText,
@@ -1483,7 +1483,7 @@ export default function OrderTracker({ parts }: OrderTrackerProps) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
             {visibleOrders.map((order) => (
               <OrderRow
-                key={order.id}
+                key={order.id + '-' + (order.fulfillmentDate || 'ASAP')}
                 order={order}
                 onStatusChange={handleStatusChange}
                 onNotesChange={handleNotesChange}
