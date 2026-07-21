@@ -441,9 +441,9 @@ export default function ForCrafters() {
                   {items.map((item, idx) => {
                     const NPCTrades = new Set([
                       "walnut lumber", "iron rivets", "mythril rivets", "oak lumber",
-                      "steel plate", "holy cedar lumber", "mythrite ingot", "titanium ingot",
+                      "steel plate", "holy cedar lumber",
                       "steel rivets", "steel ingot", "mythril ingot", "clear glass lens",
-                      "wing glue", "enchanted hardsilver ink", "hardsilver ingot", "mythrite rivets",
+                      "enchanted hardsilver ink", "hardsilver ingot", "mythrite rivets",
                     ]);
                     const isNPCTrade = NPCTrades.has(item.ingredient.toLowerCase());
                     if (isNPCTrade) {
