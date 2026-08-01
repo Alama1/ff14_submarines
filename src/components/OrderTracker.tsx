@@ -26,6 +26,7 @@ import {
   PencilLine,
   Minus,
   Calendar,
+  Layers,
 } from 'lucide-react';
 
 function getTimestamp(): number { return Date.now(); }
@@ -995,6 +996,221 @@ function ParsePreview({ items, subtotal, discountPercent, discountAmount, total 
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Crafting summary dropdown — aggregates parts from "In Progress" orders
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface CraftingSummaryDropdownProps {
+  orders: Order[];
+}
+
+function CraftingSummaryDropdown({ orders }: CraftingSummaryDropdownProps) {
+  const [open, setOpen] = useState(false);
+
+  // Filter only in_progress orders
+  const inProgressOrders = orders.filter((o) => o.status === 'in_progress');
+
+  // Aggregate parts: partName → { partType, totalQty }
+  const aggregated = new Map<string, { partName: string; partType: string; totalQty: number }>();
+  for (const order of inProgressOrders) {
+    for (const item of order.items) {
+      const key = item.partName;
+      const existing = aggregated.get(key);
+      if (existing) {
+        existing.totalQty += item.quantity;
+      } else {
+        aggregated.set(key, {
+          partName: item.partName,
+          partType: item.partType,
+          totalQty: item.quantity,
+        });
+      }
+    }
+  }
+
+  // Group by part type
+  const typeOrder = ['Hull', 'Stern', 'Bow', 'Bridge', 'Materials'];
+  const grouped: Record<string, { partName: string; totalQty: number }[]> = {};
+  for (const entry of aggregated.values()) {
+    const type = entry.partType;
+    if (!grouped[type]) grouped[type] = [];
+    grouped[type].push({ partName: entry.partName, totalQty: entry.totalQty });
+  }
+  // Sort each group alphabetically by part name
+  for (const type of Object.keys(grouped)) {
+    grouped[type].sort((a, b) => a.partName.localeCompare(b.partName));
+  }
+
+  const totalParts = Array.from(aggregated.values()).reduce((s, e) => s + e.totalQty, 0);
+  const uniqueParts = aggregated.size;
+
+  if (inProgressOrders.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        border: `1px solid ${open ? 'rgba(96,165,250,0.35)' : 'rgba(96,165,250,0.15)'}`,
+        borderRadius: '6px',
+        background: open
+          ? 'linear-gradient(135deg, rgba(96,165,250,0.06) 0%, rgba(18,24,36,0.85) 100%)'
+          : 'rgba(96,165,250,0.03)',
+        transition: 'all 0.25s ease',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Toggle header */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0.75rem 1rem',
+          cursor: 'pointer',
+          userSelect: 'none',
+        }}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <Layers size={16} style={{ color: '#60a5fa' }} />
+          <span
+            style={{
+              fontWeight: '700',
+              fontSize: '0.92rem',
+              color: 'var(--color-text-title)',
+            }}
+          >
+            Crafting Summary
+          </span>
+          <span
+            style={{
+              fontSize: '0.72rem',
+              color: '#60a5fa',
+              background: 'rgba(96,165,250,0.12)',
+              border: '1px solid rgba(96,165,250,0.25)',
+              borderRadius: '99px',
+              padding: '0.1rem 0.55rem',
+              fontWeight: '600',
+            }}
+          >
+            {inProgressOrders.length} order{inProgressOrders.length !== 1 ? 's' : ''} · {totalParts} part{totalParts !== 1 ? 's' : ''}
+          </span>
+        </div>
+        <div style={{ color: 'var(--color-text-muted)', display: 'flex' }}>
+          {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </div>
+      </div>
+
+      {/* Expanded body */}
+      {open && (
+        <div
+          style={{
+            borderTop: '1px solid rgba(96,165,250,0.12)',
+            padding: '0.75rem 1rem 1rem',
+          }}
+        >
+          {/* Quick stats */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '1.5rem',
+              flexWrap: 'wrap',
+              marginBottom: '0.85rem',
+              padding: '0.6rem 0.8rem',
+              background: 'rgba(96,165,250,0.04)',
+              border: '1px solid rgba(96,165,250,0.1)',
+              borderRadius: '4px',
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+              <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Parts</span>
+              <span style={{ fontSize: '1.05rem', fontWeight: '700', color: '#60a5fa' }}>{totalParts}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+              <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Unique Parts</span>
+              <span style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--color-text-title)' }}>{uniqueParts}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+              <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Orders</span>
+              <span style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--color-text-title)' }}>{inProgressOrders.length}</span>
+            </div>
+          </div>
+
+          {/* Parts table grouped by type */}
+          <div
+            style={{
+              background: 'var(--bg-input)',
+              borderRadius: '4px',
+              border: '1px solid rgba(255,255,255,0.05)',
+              overflow: 'hidden',
+            }}
+          >
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '0.82rem',
+                tableLayout: 'fixed',
+              }}
+            >
+              <thead>
+                <tr
+                  style={{
+                    background: 'rgba(96,165,250,0.06)',
+                    borderBottom: '1px solid rgba(96,165,250,0.15)',
+                  }}
+                >
+                  <th style={{ padding: '0.5rem 0.75rem', color: '#60a5fa', textAlign: 'left', width: '110px' }}>Type</th>
+                  <th style={{ padding: '0.5rem 0.75rem', color: '#60a5fa', textAlign: 'left' }}>Part</th>
+                  <th style={{ padding: '0.5rem 0.75rem', color: '#60a5fa', textAlign: 'center', width: '80px' }}>Qty Needed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {typeOrder.map((type) => {
+                  const items = grouped[type];
+                  if (!items || items.length === 0) return null;
+                  return items.map((item, idx) => (
+                    <tr
+                      key={`${type}-${idx}`}
+                      style={{
+                        borderBottom: '1px solid rgba(255,255,255,0.03)',
+                        background: type === 'Materials' ? 'rgba(197,160,89,0.02)' : 'transparent',
+                      }}
+                    >
+                      <td
+                        style={{
+                          padding: '0.45rem 0.75rem',
+                          color: 'var(--color-text-muted)',
+                          fontWeight: idx === 0 ? '600' : '400',
+                          fontSize: '0.78rem',
+                        }}
+                      >
+                        {idx === 0 ? (type === 'Materials' ? 'Extra' : type) : ''}
+                      </td>
+                      <td style={{ padding: '0.45rem 0.75rem', color: 'var(--color-text-title)' }}>
+                        {item.partName}
+                      </td>
+                      <td
+                        style={{
+                          padding: '0.45rem 0.75rem',
+                          textAlign: 'center',
+                          fontWeight: '700',
+                          color: '#60a5fa',
+                        }}
+                      >
+                        ×{item.totalQty}
+                      </td>
+                    </tr>
+                  ));
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function OrderTracker({ parts }: OrderTrackerProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
@@ -1394,6 +1610,10 @@ export default function OrderTracker({ parts }: OrderTrackerProps) {
           )}
         </div>
       </div>
+
+      {/* ── Crafting Summary Dropdown ── */}
+      <CraftingSummaryDropdown orders={orders} />
+
       <div>
         {/* Header + filter bar */}
         <div
