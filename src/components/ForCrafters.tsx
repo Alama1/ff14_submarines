@@ -245,6 +245,27 @@ export default function ForCrafters() {
         </span>
       </div>
 
+      {/* 1-week deadline banner */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '0.75rem',
+        padding: '0.85rem 1.1rem',
+        background: 'rgba(245,158,11,0.07)',
+        border: '1px solid rgba(245,158,11,0.25)',
+        borderRadius: '4px',
+        fontSize: '0.83rem',
+        color: 'var(--color-text-muted)',
+        lineHeight: '1.55',
+      }}>
+        <AlertTriangle size={15} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '0.1rem' }} />
+        <span>
+          <strong style={{ color: '#f59e0b' }}>1-week deadline</strong> — all claimed orders should be completed within
+          {' '}<strong style={{ color: 'var(--color-text-title)' }}>one week</strong>. Otherwise, I cannot guarantee that
+          I will buy them immediately. Please plan your crafts wisely!
+        </span>
+      </div>
+
       {/* Discord CTA Banner */}
       <div className="ff-card-framed" style={{
         padding: '1.25rem 1.5rem',
