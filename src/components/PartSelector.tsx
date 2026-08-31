@@ -1,16 +1,19 @@
-import { formatGil, CLASSES } from '../SubmarineData';
+import { useMemo } from 'react';
+import { formatGil, formatNumber } from '../utils/format';
 import { Hammer, Plus, Minus } from 'lucide-react';
-import { SubmarinePart, PartIngredient } from '../types';
+import { ApiSubmarinePart, PartType } from '../api/types';
+import { CraftabilityResult } from '../utils/stockCalc';
+
+const CLASS_ORDER = ['shark', 'unkiu', 'whale', 'coelacanth', 'syldra', 'magitek'];
 
 interface PartSelectorProps {
-  partType: string;
-  parts?: SubmarinePart[];
-  selectedPart: SubmarinePart | null;
-  onSelectPart: (part: SubmarinePart | null) => void;
+  partType: PartType;
+  parts: ApiSubmarinePart[];
+  selectedPart: ApiSubmarinePart | null;
+  onSelectPart: (part: ApiSubmarinePart | null) => void;
   quantity: number;
   onQuantityChange: (qty: number) => void;
-  partIngredients?: PartIngredient[];
-  craftableSets?: number;
+  craftability: CraftabilityResult;
 }
 
 export default function PartSelector({
@@ -20,17 +23,36 @@ export default function PartSelector({
   onSelectPart,
   quantity,
   onQuantityChange,
-  partIngredients = [],
-  craftableSets,
+  craftability,
 }: PartSelectorProps) {
   const currentClassKey = selectedPart ? selectedPart.classKey : '';
   const currentIsModified = selectedPart ? selectedPart.isModified : false;
 
+  // Classes available for this part type, derived from the live catalog
+  const classes = useMemo(() => {
+    const seen = new Map<string, string>();
+    parts
+      .filter((p) => p.partType === partType)
+      .forEach((p) => {
+        if (!seen.has(p.classKey)) seen.set(p.classKey, p.className);
+      });
+    return [...seen.entries()]
+      .sort((a, b) => {
+        const ia = CLASS_ORDER.indexOf(a[0]);
+        const ib = CLASS_ORDER.indexOf(b[0]);
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      })
+      .map(([key, name]) => ({ key, name }));
+  }, [parts, partType]);
+
   const handleClassChange = (classKey: string) => {
     const isMod = selectedPart ? currentIsModified : false;
-    const matchingPart = parts.find(
-      (p) => p.partType === partType && p.classKey === classKey && p.isModified === isMod
-    );
+    const matchingPart =
+      parts.find(
+        (p) => p.partType === partType && p.classKey === classKey && p.isModified === isMod
+      ) ??
+      parts.find((p) => p.partType === partType && p.classKey === classKey && !p.isModified) ??
+      parts.find((p) => p.partType === partType && p.classKey === classKey);
     if (matchingPart) onSelectPart(matchingPart);
   };
 
@@ -53,19 +75,30 @@ export default function PartSelector({
 
   const physicalStock = selectedPart ? selectedPart.stock : 0;
   const linePrice = selectedPart ? selectedPart.price * quantity : 0;
-  const hasRecipe = partIngredients.some(pi => pi.partId === selectedPart?.id);
+  const craftable = craftability.craftable;
+  const totalAvailable = physicalStock + craftable;
 
   return (
     <div className="ff-card-framed fade-in" style={{ padding: '1.25rem' }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '1rem',
-        borderBottom: '1px solid rgba(197, 160, 89, 0.15)',
-        paddingBottom: '0.75rem',
-      }}>
-        <h3 style={{ fontSize: '1.15rem', color: 'var(--color-text-title)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1rem',
+          borderBottom: '1px solid rgba(197, 160, 89, 0.15)',
+          paddingBottom: '0.75rem',
+        }}
+      >
+        <h3
+          style={{
+            fontSize: '1.15rem',
+            color: 'var(--color-text-title)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
+        >
           <span style={{ color: 'var(--color-gold)' }}>✦</span> {partType}
         </h3>
 
@@ -84,14 +117,20 @@ export default function PartSelector({
                 padding: '0 0.25rem',
                 outline: 'none',
               }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-text-muted)'}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text-muted)')}
             >
               Omit
             </button>
           )}
 
-          <label className="toggle-container" style={{ opacity: selectedPart ? 1 : 0.5, cursor: selectedPart ? 'pointer' : 'not-allowed' }}>
+          <label
+            className="toggle-container"
+            style={{
+              opacity: selectedPart ? 1 : 0.5,
+              cursor: selectedPart ? 'pointer' : 'not-allowed',
+            }}
+          >
             <input
               type="checkbox"
               style={{ display: 'none' }}
@@ -100,26 +139,30 @@ export default function PartSelector({
               disabled={!selectedPart}
             />
             <div className="toggle-switch"></div>
-            <span style={{
-              fontSize: '0.75rem',
-              fontWeight: '700',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: currentIsModified ? 'var(--color-gold)' : 'var(--color-text-muted)',
-            }}>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: '700',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: currentIsModified ? 'var(--color-gold)' : 'var(--color-text-muted)',
+              }}
+            >
               Modified
             </span>
           </label>
         </div>
       </div>
 
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '0.4rem',
-        marginBottom: '1rem',
-      }}>
-        {CLASSES.map((cls) => {
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '0.4rem',
+          marginBottom: '1rem',
+        }}
+      >
+        {classes.map((cls) => {
           const isSelected = cls.key === currentClassKey;
           return (
             <button
@@ -149,65 +192,112 @@ export default function PartSelector({
 
       {selectedPart ? (
         <>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            background: 'var(--bg-input)',
-            padding: '0.6rem 0.8rem',
-            borderRadius: '4px 4px 0 0',
-            border: '1px solid rgba(255, 255, 255, 0.05)',
-            borderBottom: 'none',
-            flexDirection: 'column',
-            gap: '0.35rem',
-          }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'var(--bg-input)',
+              padding: '0.6rem 0.8rem',
+              borderRadius: '4px 4px 0 0',
+              border: '1px solid rgba(255, 255, 255, 0.05)',
+              borderBottom: 'none',
+              flexDirection: 'column',
+              gap: '0.35rem',
+            }}
+          >
             <div className="gil-price" style={{ fontSize: '1rem' }}>
               <span>{formatGil(selectedPart.price).replace(' Gil', '')}</span>
               <span className="gil-coin">G</span>
               {quantity > 1 && (
-                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginLeft: '0.25rem' }}>
+                <span
+                  style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginLeft: '0.25rem' }}
+                >
                   ea.
                 </span>
               )}
             </div>
             <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
               {physicalStock > 0 && (
-                <span className="badge badge-success" style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
-                  In Stock ({physicalStock})
+                <span
+                  className="badge badge-success"
+                  style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', whiteSpace: 'nowrap' }}
+                >
+                  Ready ({physicalStock})
                 </span>
               )}
-              {hasRecipe && craftableSets !== undefined && craftableSets > 0 && craftableSets >= quantity && (
-                <span className="badge badge-info" style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', whiteSpace: 'nowrap', background: 'rgba(96,165,250,0.15)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.3)' }}>
+              {craftability.hasRecipe && craftable > 0 && craftable >= quantity && (
+                <span
+                  className="badge badge-info"
+                  style={{
+                    padding: '0.15rem 0.45rem',
+                    fontSize: '0.65rem',
+                    whiteSpace: 'nowrap',
+                    background: 'rgba(96,165,250,0.15)',
+                    color: '#60a5fa',
+                    border: '1px solid rgba(96,165,250,0.3)',
+                  }}
+                >
                   <Hammer size={8} style={{ marginRight: '2px', verticalAlign: 'middle' }} />
-                  In stock ({craftableSets} sets)
+                  Can craft ({formatNumber(craftable)})
                 </span>
               )}
-              {hasRecipe && craftableSets !== undefined && craftableSets > 0 && craftableSets < quantity && (
-                <span className="badge badge-info" style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', whiteSpace: 'nowrap', background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
+              {craftability.hasRecipe && craftable > 0 && craftable < quantity && (
+                <span
+                  className="badge badge-info"
+                  style={{
+                    padding: '0.15rem 0.45rem',
+                    fontSize: '0.65rem',
+                    whiteSpace: 'nowrap',
+                    background: 'rgba(251,191,36,0.15)',
+                    color: '#fbbf24',
+                    border: '1px solid rgba(251,191,36,0.3)',
+                  }}
+                >
                   <Hammer size={8} style={{ marginRight: '2px', verticalAlign: 'middle' }} />
-                  Only {craftableSets}/{quantity} in stock
+                  {formatNumber(totalAvailable)}/{formatNumber(quantity)} available
                 </span>
               )}
-              {physicalStock === 0 && (!hasRecipe || craftableSets === 0) && (
-                <span className="badge badge-warning" style={{ padding: '0.15rem 0.45rem', fontSize: '0.65rem', opacity: 0.9, whiteSpace: 'nowrap' }}>
+              {totalAvailable === 0 && (
+                <span
+                  className="badge badge-warning"
+                  style={{
+                    padding: '0.15rem 0.45rem',
+                    fontSize: '0.65rem',
+                    opacity: 0.9,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
                   Out of Stock
                 </span>
               )}
             </div>
           </div>
 
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.6rem',
-            background: 'rgba(197, 160, 89, 0.04)',
-            padding: '0.75rem 0.8rem',
-            borderRadius: '0 0 4px 4px',
-            border: '1px solid rgba(197, 160, 89, 0.12)',
-            alignItems: 'stretch',
-          }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.6rem',
+              background: 'rgba(197, 160, 89, 0.04)',
+              padding: '0.75rem 0.8rem',
+              borderRadius: '0 0 4px 4px',
+              border: '1px solid rgba(197, 160, 89, 0.12)',
+              alignItems: 'stretch',
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: '0.25rem' }}>Qty:</span>
+              <span
+                style={{
+                  fontSize: '0.7rem',
+                  color: 'var(--color-text-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginRight: '0.25rem',
+                }}
+              >
+                Qty:
+              </span>
               <button
                 type="button"
                 className="ff-btn-secondary"
@@ -245,38 +335,53 @@ export default function PartSelector({
             </div>
 
             {quantity > 1 && (
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                borderTop: '1px solid rgba(197, 160, 89, 0.1)',
-                paddingTop: '0.5rem',
-                marginTop: '0.1rem'
-              }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Subtotal:</span>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderTop: '1px solid rgba(197, 160, 89, 0.1)',
+                  paddingTop: '0.5rem',
+                  marginTop: '0.1rem',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    color: 'var(--color-text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  Subtotal:
+                </span>
                 <div className="gil-price" style={{ fontSize: '0.88rem' }}>
-                  <span style={{ color: 'var(--color-gold-light)' }}>{new Intl.NumberFormat('en-US').format(linePrice)}</span>
-                  <span className="gil-coin" style={{ width: '14px', height: '14px', fontSize: '8px' }}>G</span>
+                  <span style={{ color: 'var(--color-gold-light)' }}>{formatNumber(linePrice)}</span>
+                  <span className="gil-coin" style={{ width: '14px', height: '14px', fontSize: '8px' }}>
+                    G
+                  </span>
                 </div>
               </div>
             )}
           </div>
         </>
       ) : (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'rgba(255, 255, 255, 0.02)',
-          border: '1px dashed rgba(197, 160, 89, 0.2)',
-          borderRadius: '4px',
-          padding: '1.5rem',
-          color: 'var(--color-text-muted)',
-          fontSize: '0.82rem',
-          textAlign: 'center',
-          height: '76px',
-          boxSizing: 'border-box',
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(255, 255, 255, 0.02)',
+            border: '1px dashed rgba(197, 160, 89, 0.2)',
+            borderRadius: '4px',
+            padding: '1.5rem',
+            color: 'var(--color-text-muted)',
+            fontSize: '0.82rem',
+            textAlign: 'center',
+            height: '76px',
+            boxSizing: 'border-box',
+          }}
+        >
           Part omitted (select a class above to include)
         </div>
       )}

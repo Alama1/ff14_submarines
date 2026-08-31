@@ -1,16 +1,36 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import PartSelector from './PartSelector';
-import { formatGil, PART_TYPES, ALL_PART_TYPES } from '../SubmarineData';
-import { Copy, Check, Info, Anchor, Plus, Minus, Tag, Hammer } from 'lucide-react';
-import { SubmarinePart, PartType, SelectionMap, BulkDiscount, PartIngredient, Order } from '../types';
-import { useStockData } from '../hooks/useStockData';
-import { computeAvailableStock, computeCraftableCount } from '../utils/stockCalc';
+import { formatGil, formatNumber, PART_TYPES, ALL_PART_TYPES } from '../utils/format';
+import {
+  Anchor,
+  Plus,
+  Minus,
+  Tag,
+  Info,
+  Check,
+  Send,
+  RefreshCw,
+  Copy,
+  ExternalLink,
+  AlertCircle,
+  Ship,
+} from 'lucide-react';
+import { ApiSubmarinePart, CreateOrderItemDto, PartType } from '../api/types';
+import { useCatalog } from '../hooks/useCatalog';
+import {
+  computeAvailableMaterials,
+  computeCommittedMaterials,
+  computePartCraftable,
+  computeSetCraftable,
+} from '../utils/stockCalc';
+import { submitOrder } from '../api/endpoints';
+import { ApiError } from '../api/client';
+import { addRecentOrderCode } from '../utils/orderCodes';
+import { Hammer } from 'lucide-react';
 
 interface SetBuilderProps {
-  parts?: SubmarinePart[];
-  discounts?: BulkDiscount[];
-  partIngredients?: PartIngredient[];
-  orders?: Order[];
+  catalog: ReturnType<typeof useCatalog>;
+  onTrackOrder: (code: string) => void;
 }
 
 type QuantityMap = Record<PartType, number>;
@@ -18,7 +38,7 @@ type QuantityMap = Record<PartType, number>;
 interface SubmarineBuild {
   id: string;
   name: string;
-  selections: SelectionMap;
+  selections: Record<PartType, ApiSubmarinePart | null>;
   quantities: QuantityMap;
   setCount: number;
 }
@@ -76,49 +96,456 @@ const PRESETS: PresetDefinition[] = [
   },
 ];
 
-function createDefaultBuild(id: string, name: string, parts: SubmarinePart[]): SubmarineBuild {
-  const initialSelections: SelectionMap = { Hull: null, Stern: null, Bow: null, Bridge: null, Materials: null };
+function createEmptySelections(): Record<PartType, ApiSubmarinePart | null> {
+  return { Hull: null, Stern: null, Bow: null, Bridge: null, Materials: null };
+}
+
+function createDefaultBuild(id: string, name: string, parts: ApiSubmarinePart[]): SubmarineBuild {
+  const selections = createEmptySelections();
   if (parts.length > 0) {
     PART_TYPES.forEach((type: PartType) => {
       const defaultPart = parts.find(
         (p) => p.partType === type && p.classKey === 'shark' && !p.isModified
       );
-      initialSelections[type] = defaultPart ?? parts.find((p) => p.partType === type) ?? null;
+      selections[type] = defaultPart ?? parts.find((p) => p.partType === type) ?? null;
     });
-    initialSelections.Materials = parts.find((p) => p.partType === 'Materials') ?? null;
+    selections.Materials = parts.find((p) => p.partType === 'Materials') ?? null;
   }
   return {
     id,
     name,
-    selections: initialSelections,
-    quantities: {
-      Hull: 1,
-      Stern: 1,
-      Bow: 1,
-      Bridge: 1,
-      Materials: 0,
-    },
+    selections,
+    quantities: { Hull: 1, Stern: 1, Bow: 1, Bridge: 1, Materials: 0 },
     setCount: 1,
   };
 }
 
-export default function SetBuilder({ parts = [], discounts = [], partIngredients = [], orders = [] }: SetBuilderProps) {
+// ─── Order submission form ────────────────────────────────────────────────────
+
+interface OrderFormState {
+  clientName: string;
+  contactInfo: string;
+  notes: string;
+  fulfillmentType: 'asap' | 'date';
+  fulfillmentDate: string;
+}
+
+interface SubmittedOrder {
+  orderCode: string;
+  total: number;
+}
+
+interface OrderSubmitFormProps {
+  items: CreateOrderItemDto[];
+  subtotal: number;
+  discountPct: number;
+  discountAmt: number;
+  total: number;
+  onCancel: () => void;
+  onSubmitted: (order: SubmittedOrder) => void;
+}
+
+function OrderSubmitForm({
+  items,
+  subtotal,
+  discountPct,
+  discountAmt,
+  total,
+  onCancel,
+  onSubmitted,
+}: OrderSubmitFormProps) {
+  const [form, setForm] = useState<OrderFormState>({
+    clientName: '',
+    contactInfo: '',
+    notes: '',
+    fulfillmentType: 'asap',
+    fulfillmentDate: '',
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    setError('');
+    if (!form.clientName.trim()) {
+      setError('Please enter your character or Discord name.');
+      return;
+    }
+    if (form.fulfillmentType === 'date' && !form.fulfillmentDate) {
+      setError('Please pick a fulfillment date or switch back to ASAP.');
+      return;
+    }
+
+    const fulfillmentDt =
+      form.fulfillmentType === 'date' ? form.fulfillmentDate : 'ASAP';
+
+    setSubmitting(true);
+    try {
+      const order = await submitOrder({
+        clientName: form.clientName.trim(),
+        contactInfo: form.contactInfo.trim() || undefined,
+        notes: form.notes.trim() || undefined,
+        fulfillmentDt,
+        items,
+      });
+      addRecentOrderCode(order.orderCode);
+      onSubmitted({ orderCode: order.orderCode, total: order.total });
+    } catch (e: unknown) {
+      setError(
+        e instanceof ApiError
+          ? e.message
+          : 'Failed to submit the order. Please try again.'
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="ff-card-framed fade-in"
+      style={{
+        padding: '1.5rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.25rem',
+        borderLeft: '3px solid var(--color-gold)',
+        background: 'linear-gradient(135deg, rgba(197,160,89,0.04) 0%, rgba(21,31,51,0.3) 100%)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <Send size={20} style={{ color: 'var(--color-gold)' }} />
+        <h3 style={{ fontSize: '1.2rem' }}>Send Order Request</h3>
+      </div>
+      <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: 0, textAlign: 'left' }}>
+        Submitting creates your order and gives you a confirmation code. Send that code to{' '}
+        <strong style={{ color: 'var(--color-gold)' }}>@Alamai</strong> on Discord to confirm the
+        build.
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label" style={{ fontSize: '0.75rem' }}>
+            Character / Discord Name *
+          </label>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="e.g. Alamai"
+            value={form.clientName}
+            onChange={(e) => setForm({ ...form, clientName: e.target.value })}
+            maxLength={100}
+          />
+        </div>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label" style={{ fontSize: '0.75rem' }}>
+            Discord Contact (optional)
+          </label>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="e.g. alamai"
+            value={form.contactInfo}
+            onChange={(e) => setForm({ ...form, contactInfo: e.target.value })}
+            maxLength={100}
+          />
+        </div>
+      </div>
+
+      <div className="form-group" style={{ marginBottom: 0 }}>
+        <label className="form-label" style={{ fontSize: '0.75rem' }}>
+          Notes (optional)
+        </label>
+        <textarea
+          className="form-input"
+          rows={2}
+          placeholder="Anything Alamai should know about this order…"
+          value={form.notes}
+          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          style={{ resize: 'vertical', fontFamily: 'inherit', fontSize: '0.85rem' }}
+        />
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label" style={{ fontSize: '0.75rem' }}>
+            Fulfillment
+          </label>
+          <select
+            className="form-select"
+            style={{ width: '150px', height: '38px', padding: '0 0.5rem', fontSize: '0.85rem' }}
+            value={form.fulfillmentType}
+            onChange={(e) => {
+              const type = e.target.value as 'asap' | 'date';
+              setForm({
+                ...form,
+                fulfillmentType: type,
+                fulfillmentDate:
+                  type === 'date' && !form.fulfillmentDate
+                    ? new Date().toISOString().split('T')[0]
+                    : form.fulfillmentDate,
+              });
+            }}
+          >
+            <option value="asap">ASAP</option>
+            <option value="date">Pre-order Date</option>
+          </select>
+        </div>
+        {form.fulfillmentType === 'date' && (
+          <input
+            type="date"
+            className="form-input"
+            style={{ width: '170px', height: '38px', fontSize: '0.85rem', padding: '0 0.5rem', marginTop: '1.55rem' }}
+            value={form.fulfillmentDate}
+            onChange={(e) => setForm({ ...form, fulfillmentDate: e.target.value })}
+          />
+        )}
+      </div>
+
+      {/* Price recap */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '1.5rem',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          background: 'rgba(197,160,89,0.04)',
+          border: '1px solid rgba(197,160,89,0.12)',
+          borderRadius: '4px',
+          padding: '0.75rem 1rem',
+        }}
+      >
+        {discountPct > 0 && (
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                Subtotal
+              </span>
+              <span style={{ fontSize: '0.88rem', fontWeight: '600' }}>{formatGil(subtotal)}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+              <span style={{ fontSize: '0.68rem', color: 'var(--color-success)', textTransform: 'uppercase' }}>
+                Bulk Discount ({discountPct}%)
+              </span>
+              <span style={{ fontSize: '0.88rem', fontWeight: '600', color: 'var(--color-success)' }}>
+                −{formatGil(discountAmt)}
+              </span>
+            </div>
+          </>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+          <span style={{ fontSize: '0.68rem', color: 'var(--color-gold-light)', textTransform: 'uppercase' }}>
+            Total
+          </span>
+          <div className="gil-price" style={{ fontSize: '1.1rem' }}>
+            <span>{formatNumber(total)}</span>
+            <span className="gil-coin" style={{ width: '15px', height: '15px', fontSize: '9px' }}>G</span>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            color: 'var(--color-error)',
+            fontSize: '0.82rem',
+            background: 'rgba(239,68,68,0.08)',
+            border: '1px solid rgba(239,68,68,0.25)',
+            borderRadius: '4px',
+            padding: '0.6rem 0.75rem',
+          }}
+        >
+          <AlertCircle size={14} style={{ flexShrink: 0 }} />
+          {error}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          className="ff-btn glow-active"
+          style={{ flex: 1, minWidth: '200px' }}
+          onClick={handleSubmit}
+          disabled={submitting}
+        >
+          {submitting ? <RefreshCw size={16} className="spin" /> : <Send size={16} />}
+          {submitting ? 'Submitting…' : 'Submit Order Request'}
+        </button>
+        <button type="button" className="ff-btn-secondary" onClick={onCancel} disabled={submitting}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Success view ─────────────────────────────────────────────────────────────
+
+interface OrderSuccessViewProps {
+  order: SubmittedOrder;
+  onTrack: () => void;
+  onNewOrder: () => void;
+}
+
+function OrderSuccessView({ order, onTrack, onNewOrder }: OrderSuccessViewProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(order.orderCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div
+      className="ff-card-framed fade-in"
+      style={{
+        padding: '2.5rem 2rem',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '1.25rem',
+        textAlign: 'center',
+        background: 'linear-gradient(135deg, rgba(16,185,129,0.05) 0%, rgba(21,31,51,0.4) 100%)',
+        borderLeft: '3px solid var(--color-success)',
+      }}
+    >
+      <div
+        style={{
+          background: 'rgba(16,185,129,0.12)',
+          padding: '1rem',
+          borderRadius: '50%',
+          color: 'var(--color-success)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Check size={32} />
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+        <h2 style={{ fontSize: '1.5rem' }}>Order Request Sent!</h2>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', margin: 0 }}>
+          Your order has been created with a total of{' '}
+          <strong style={{ color: 'var(--color-gold)' }}>{formatGil(order.total)}</strong>.
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}>
+        <span
+          style={{
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            color: 'var(--color-text-muted)',
+          }}
+        >
+          Your Confirmation Code
+        </span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          title="Click to copy"
+          style={{
+            fontFamily: 'monospace',
+            fontSize: '2rem',
+            fontWeight: '700',
+            letterSpacing: '0.15em',
+            color: 'var(--color-gold-light)',
+            background: 'var(--bg-input)',
+            border: '2px dashed var(--color-gold)',
+            borderRadius: '8px',
+            padding: '0.75rem 2rem',
+            cursor: 'pointer',
+            textShadow: '0 0 15px var(--color-gold-glow)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+          }}
+        >
+          {order.orderCode}
+          {copied ? <Check size={18} style={{ color: 'var(--color-success)' }} /> : <Copy size={18} />}
+        </button>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '0.75rem',
+          padding: '1rem 1.25rem',
+          background: 'rgba(197,160,89,0.06)',
+          border: '1px solid rgba(197,160,89,0.2)',
+          borderRadius: '4px',
+          maxWidth: '520px',
+          textAlign: 'left',
+        }}
+      >
+        <Ship size={18} style={{ color: 'var(--color-gold)', flexShrink: 0, marginTop: '0.15rem' }} />
+        <span style={{ fontSize: '0.88rem', color: 'var(--color-text-main)', lineHeight: '1.55' }}>
+          <strong style={{ color: 'var(--color-gold-light)' }}>Next step:</strong> send this code to{' '}
+          <span
+            style={{
+              fontFamily: 'monospace',
+              background: 'rgba(197, 160, 89, 0.12)',
+              color: 'var(--color-gold)',
+              padding: '0.1rem 0.45rem',
+              borderRadius: '3px',
+              fontWeight: '700',
+            }}
+          >
+            @Alamai
+          </span>{' '}
+          on Discord to confirm your build request. You can track the progress anytime in the Orders
+          tab.
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button type="button" className="ff-btn" onClick={onTrack}>
+          <ExternalLink size={14} /> Track This Order
+        </button>
+        <button type="button" className="ff-btn-secondary" onClick={onNewOrder}>
+          <Plus size={14} /> Build Another Order
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main SetBuilder ──────────────────────────────────────────────────────────
+
+export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
+  const { parts, partsById, discounts, inProgress } = catalog;
+
   const [builds, setBuilds] = useState<SubmarineBuild[]>(() =>
     parts.length > 0 ? [createDefaultBuild('1', 'Build 1', parts)] : []
   );
   const [activeBuildId, setActiveBuildId] = useState<string>('1');
-  const [copied, setCopied] = useState<boolean>(false);
 
-  // Background live stock fetch (shared cache with ForCrafters)
-  const { stockItems } = useStockData();
+  const [showSubmitForm, setShowSubmitForm] = useState(false);
+  const [submittedOrder, setSubmittedOrder] = useState<SubmittedOrder | null>(null);
 
-  const activeBuild = builds.find((b) => b.id === activeBuildId) || createDefaultBuild('temp', 'Temp', parts);
+  // Live availability: inventory stock minus materials committed to in-progress orders
+  const availableMaterials = useMemo(() => {
+    const committed = computeCommittedMaterials(inProgress, partsById);
+    return computeAvailableMaterials(parts, committed);
+  }, [parts, partsById, inProgress]);
+
+  const activeBuild =
+    builds.find((b) => b.id === activeBuildId) ?? builds[0] ?? createDefaultBuild('temp', 'Temp', parts);
   const selections = activeBuild.selections;
   const quantities = activeBuild.quantities;
   const setCount = activeBuild.setCount;
 
   const handleAddBuild = () => {
-    const nextId = (builds.reduce((max, b) => Math.max(max, parseInt(b.id, 10) || 0), 0) + 1).toString();
+    const nextId = (
+      builds.reduce((max, b) => Math.max(max, parseInt(b.id, 10) || 0), 0) + 1
+    ).toString();
     const newBuild = createDefaultBuild(nextId, `Build ${nextId}`, parts);
     setBuilds([...builds, newBuild]);
     setActiveBuildId(nextId);
@@ -136,33 +563,23 @@ export default function SetBuilder({ parts = [], discounts = [], partIngredients
   };
 
   const handleRenameBuild = (id: string, newName: string) => {
-    setBuilds((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, name: newName } : b))
-    );
+    setBuilds((prev) => prev.map((b) => (b.id === id ? { ...b, name: newName } : b)));
   };
 
-  const handleSelect = (type: PartType, part: SubmarinePart | null) => {
+  const handleSelect = (type: PartType, part: ApiSubmarinePart | null) => {
     setBuilds((prev) =>
       prev.map((b) =>
-        b.id === activeBuildId
-          ? { ...b, selections: { ...b.selections, [type]: part } }
-          : b
+        b.id === activeBuildId ? { ...b, selections: { ...b.selections, [type]: part } } : b
       )
     );
   };
 
   const handleQuantityChange = (type: PartType, qty: number) => {
-    const minQty = 0;
-    const safeQty = Math.max(minQty, qty);
+    const safeQty = Math.max(0, qty);
     setBuilds((prev) =>
       prev.map((b) => {
         if (b.id === activeBuildId) {
-          const newQuantities = { ...b.quantities, [type]: safeQty };
-          return {
-            ...b,
-            quantities: newQuantities,
-            setCount: 0,
-          };
+          return { ...b, quantities: { ...b.quantities, [type]: safeQty }, setCount: 0 };
         }
         return b;
       })
@@ -209,7 +626,10 @@ export default function SetBuilder({ parts = [], discounts = [], partIngredients
             const spec = preset.parts[type];
             if (spec) {
               const match = parts.find(
-                (p) => p.partType === type && p.classKey === spec.classKey && p.isModified === spec.isModified
+                (p) =>
+                  p.partType === type &&
+                  p.classKey === spec.classKey &&
+                  p.isModified === spec.isModified
               );
               newSelections[type] = match ?? null;
             } else {
@@ -223,7 +643,7 @@ export default function SetBuilder({ parts = [], discounts = [], partIngredients
     );
   };
 
-  const getActivePreset = (): string | null => {
+  const activePreset = useMemo(() => {
     for (const preset of PRESETS) {
       const matches = PART_TYPES.every((type) => {
         const spec = preset.parts[type];
@@ -235,53 +655,82 @@ export default function SetBuilder({ parts = [], discounts = [], partIngredients
       if (matches) return preset.name;
     }
     return null;
-  };
-
-  const activePreset = getActivePreset();
+  }, [selections]);
 
   const allSameQty =
     quantities.Hull === quantities.Stern &&
     quantities.Stern === quantities.Bow &&
     quantities.Bow === quantities.Bridge;
 
-  const getBuildSubtotal = (build: SubmarineBuild) => {
-    return ALL_PART_TYPES.reduce<number>((sum, type) => {
-      const part = build.selections[type];
-      return sum + (part ? part.price * build.quantities[type] : 0);
-    }, 0);
-  };
+  // ── Pricing — mirrors the backend order calculation exactly ─────────────────
 
-  const getBuildDiscountableSubtotal = (build: SubmarineBuild) => {
-    return PART_TYPES.reduce<number>((sum, type) => {
-      const part = build.selections[type];
-      return sum + (part ? part.price * build.quantities[type] : 0);
-    }, 0);
-  };
-
-  const overallSubtotal = builds.reduce((sum, b) => sum + getBuildSubtotal(b), 0);
-  const discountableSubtotal = builds.reduce((sum, b) => sum + getBuildDiscountableSubtotal(b), 0);
+  const overallSubtotal = builds.reduce(
+    (sum, b) =>
+      sum +
+      ALL_PART_TYPES.reduce<number>((partSum, type) => {
+        const part = b.selections[type];
+        return partSum + (part ? part.price * b.quantities[type] : 0);
+      }, 0),
+    0
+  );
 
   const totalParts = builds.reduce((sum, b) => {
-    return sum + PART_TYPES.reduce((partSum, type) => {
-      const part = b.selections[type];
-      return partSum + (part ? Number(b.quantities[type]) || 0 : 0);
-    }, 0);
+    return (
+      sum +
+      ALL_PART_TYPES.reduce((partSum, type) => {
+        const part = b.selections[type];
+        return partSum + (part ? Number(b.quantities[type]) || 0 : 0);
+      }, 0)
+    );
   }, 0);
 
-  const getRequiredPartsForDiscount = (d: { threshold: number | string }) => {
-    return (Number(d.threshold) || 0) * 4;
-  };
+  // Backend: highest tier whose threshold <= total part count (materials included)
+  const activeDiscount = useMemo(() => {
+    const sorted = [...discounts].sort((a, b) => b.threshold - a.threshold);
+    const matching = sorted.find((d) => totalParts >= d.threshold);
+    if (!matching) return null;
+    return { threshold: matching.threshold, discountPercent: Number(matching.discountPercent) || 0 };
+  }, [discounts, totalParts]);
 
-  const activeDiscount = discounts
-    .filter((d) => totalParts >= getRequiredPartsForDiscount(d))
-    .reduce((max, d) => {
-      const pct = Number(d.discountPercent) || 0;
-      const maxPct = Number(max.discountPercent) || 0;
-      return pct > maxPct ? d : max;
-    }, { threshold: 0, discountPercent: 0 });
-
-  const discountAmount = Math.round(discountableSubtotal * (Number(activeDiscount.discountPercent) / 100));
+  const discountPct = activeDiscount?.discountPercent ?? 0;
+  const discountAmount = Math.round(overallSubtotal * (discountPct / 100));
   const totalPrice = overallSubtotal - discountAmount;
+
+  // ── Availability ─────────────────────────────────────────────────────────────
+
+  const partCraftability = useMemo(() => {
+    const map: Partial<Record<PartType, ReturnType<typeof computePartCraftable>>> = {};
+    PART_TYPES.forEach((type) => {
+      map[type] = computePartCraftable(selections[type], availableMaterials);
+    });
+    return map;
+  }, [selections, availableMaterials]);
+
+  const setCraftableCount = useMemo(() => {
+    const selected = PART_TYPES.map((type) => selections[type]).filter(
+      (p): p is ApiSubmarinePart => p !== null && quantities[p.partType as PartType] > 0
+    );
+    return computeSetCraftable(selected, availableMaterials);
+  }, [selections, quantities, availableMaterials]);
+
+  const insufficientParts = useMemo(() => {
+    const list: { partName: string; requested: number; available: number }[] = [];
+    builds.forEach((b) => {
+      ALL_PART_TYPES.forEach((type) => {
+        const part = b.selections[type];
+        const qty = b.quantities[type];
+        if (!part || qty <= 0) return;
+        const craftable = computePartCraftable(part, availableMaterials).craftable;
+        const totalAvail = part.stock + craftable;
+        if (totalAvail < qty) {
+          list.push({ partName: part.name, requested: qty, available: totalAvail });
+        }
+      });
+    });
+    return list;
+  }, [builds, availableMaterials]);
+
+  const hasInsufficientParts = insufficientParts.length > 0;
 
   const hasOutOfStock = builds.some((b) =>
     ALL_PART_TYPES.some((type) => {
@@ -290,148 +739,65 @@ export default function SetBuilder({ parts = [], discounts = [], partIngredients
     })
   );
 
-  const anySelected = builds.some((b) =>
-    PART_TYPES.some((type) => b.selections[type] !== null && b.quantities[type] > 0) || b.quantities.Materials > 0
+  const anySelected = builds.some(
+    (b) =>
+      PART_TYPES.some((type) => b.selections[type] !== null && b.quantities[type] > 0) ||
+      b.quantities.Materials > 0
   );
 
-  // ── Live stock availability ─────────────────────────────────────────────────
-
-  const availableStock = useMemo(
-    () => computeAvailableStock(stockItems, orders, partIngredients),
-    [stockItems, orders, partIngredients]
+  const hasUnpricedParts = builds.some((b) =>
+    ALL_PART_TYPES.some(
+      (type) => b.selections[type] && b.quantities[type] > 0 && b.selections[type]!.price === 0
+    )
   );
 
-  // ── Set-level craftable count ───────────────────────────────────────────────
+  // ── Submission payload ───────────────────────────────────────────────────────
 
-  const setCraftableCount = useMemo(() => {
-    const parts = ALL_PART_TYPES
-      .map((type) => ({
-        partId: activeBuild.selections[type]?.id || '',
-        quantity: activeBuild.quantities[type] > 0 ? 1 : 0,
-      }))
-      .filter((p) => p.partId && p.quantity > 0);
-
-    return computeCraftableCount(parts, availableStock, partIngredients);
-  }, [activeBuild.selections, activeBuild.quantities, availableStock, partIngredients]);
-
-  // stockResult removed since availability is checked per-part
-
-  // Compute parts that are insufficient (physical stock + craftable is less than requested quantity)
-  const insufficientParts = useMemo(() => {
-    const list: { partName: string; requested: number; available: number }[] = [];
-
+  const orderItems: CreateOrderItemDto[] = useMemo(() => {
+    const items: CreateOrderItemDto[] = [];
     builds.forEach((b) => {
       ALL_PART_TYPES.forEach((type) => {
         const part = b.selections[type];
         const qty = b.quantities[type];
         if (!part || qty <= 0) return;
-
-        const physical = part.stock;
-        
-        // Find recipe
-        const recipe = partIngredients.find(pi => pi.partId === part.id);
-        let craftable = 0;
-        if (recipe && recipe.ingredients.length > 0) {
-          const NPCTrades = new Set([
-            "walnut lumber", "iron rivets", "mythril rivets", "oak lumber",
-            "steel plate", "holy cedar lumber", "mythrite ingot", "titanium ingot",
-            "steel rivets", "steel ingot", "mythril ingot", "clear glass lens",
-            "wing glue", "enchanted hardsilver ink", "hardsilver ingot", "mythrite rivets",
-          ]);
-          let minCraftable = Infinity;
-          recipe.ingredients.forEach((ing) => {
-            // NPC-trade ingredients are essentially infinite — skip them
-            if (NPCTrades.has(ing.name.toLowerCase())) return;
-            const avail = availableStock[ing.name.toLowerCase()] ?? 0;
-            const count = Math.floor(avail / ing.quantity);
-            if (count < minCraftable) minCraftable = count;
-          });
-          craftable = minCraftable === Infinity ? 0 : Math.max(0, minCraftable);
-        }
-
-        const totalAvail = physical + craftable;
-        if (totalAvail < qty) {
-          list.push({
-            partName: part.name,
-            requested: qty,
-            available: totalAvail
-          });
-        }
+        items.push({ partId: part.id, quantity: qty, buildName: b.name || undefined });
       });
     });
+    return items;
+  }, [builds]);
 
-    return list;
-  }, [builds, partIngredients, availableStock]);
+  // ── Render ───────────────────────────────────────────────────────────────────
 
-  const hasInsufficientParts = insufficientParts.length > 0;
-  // ───────────────────────────────────────────────────────────────────────────
-
-  const generateCopyText = (): string => {
-    const activeBuildsWithItems = builds.filter((b) =>
-      ALL_PART_TYPES.some((type) => b.selections[type] !== null && b.quantities[type] > 0)
+  if (submittedOrder) {
+    return (
+      <div className="set-builder fade-in">
+        <OrderSuccessView
+          order={submittedOrder}
+          onTrack={() => onTrackOrder(submittedOrder.orderCode)}
+          onNewOrder={() => {
+            setSubmittedOrder(null);
+            setShowSubmitForm(false);
+          }}
+        />
+      </div>
     );
-    if (activeBuildsWithItems.length === 0) return '';
-
-    const buildsSections = activeBuildsWithItems.map((build, index) => {
-      const lines = ALL_PART_TYPES.map((type) => {
-        const part = build.selections[type];
-        if (!part) return null;
-        const qty = build.quantities[type];
-        if (qty === 0) return null;
-        const lineTotal = part.price * qty;
-        const qtyStr = qty > 1 ? `×${qty}` : '';
-        return `${type === 'Materials' ? 'Extra' : type}: ${part.name}${qtyStr ? ` ${qtyStr}` : ''} — ${formatGil(lineTotal)}`;
-      })
-        .filter((line) => line !== null)
-        .join('\n');
-
-      const buildSameQty =
-        build.quantities.Hull === build.quantities.Stern &&
-        build.quantities.Stern === build.quantities.Bow &&
-        build.quantities.Bow === build.quantities.Bridge;
-      const setLabel = buildSameQty && build.setCount > 1 ? `\nSets: ×${build.setCount}` : '';
-
-      return `[${build.name || `Build ${index + 1}`}]\n${lines}${setLabel}`;
-    }).join('\n\n');
-
-    const thresholdParts = getRequiredPartsForDiscount(activeDiscount);
-    const discountLabel = activeDiscount.discountPercent > 0
-      ? `\nSubtotal: ${formatGil(overallSubtotal)}\nBulk Discount (${activeDiscount.discountPercent}% for ${thresholdParts}+ parts): -${formatGil(discountAmount)}`
-      : '';
-
-    const priceText = activeDiscount.discountPercent > 0 ? formatGil(totalPrice) : formatGil(overallSubtotal);
-
-    return `--- FFXIV Submarine Order Request ---
-
-${buildsSections}
-
-------------------------------------${discountLabel}
-Total Price: ${priceText}`;
-  };
-
-  const handleCopy = () => {
-    const text = generateCopyText();
-    if (text) {
-      navigator.clipboard.writeText(text).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      });
-    }
-  };
+  }
 
   return (
     <div className="set-builder fade-in">
       {/* Build/Set tabs navigation */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '1rem',
-        marginBottom: '1.5rem',
-        borderBottom: '1px solid rgba(197, 160, 89, 0.15)',
-        paddingBottom: '0.75rem',
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          marginBottom: '1.5rem',
+          borderBottom: '1px solid rgba(197, 160, 89, 0.15)',
+          paddingBottom: '0.75rem',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           {builds.map((b) => {
             const isActive = b.id === activeBuildId;
@@ -441,7 +807,9 @@ Total Price: ${priceText}`;
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  background: isActive ? 'linear-gradient(135deg, #1d263b 0%, #151b27 100%)' : 'rgba(18, 24, 36, 0.6)',
+                  background: isActive
+                    ? 'linear-gradient(135deg, #1d263b 0%, #151b27 100%)'
+                    : 'rgba(18, 24, 36, 0.6)',
                   border: `1px solid ${isActive ? 'var(--color-gold)' : 'var(--color-gold-dark)'}`,
                   borderRadius: '4px',
                   boxShadow: isActive ? '0 0 10px var(--color-gold-glow)' : 'none',
@@ -451,14 +819,16 @@ Total Price: ${priceText}`;
                 }}
               >
                 {isActive && (
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '2px',
-                    background: 'var(--color-gold)',
-                  }} />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '2px',
+                      background: 'var(--color-gold)',
+                    }}
+                  />
                 )}
                 <button
                   type="button"
@@ -482,7 +852,7 @@ Total Price: ${priceText}`;
               </div>
             );
           })}
-          
+
           <button
             type="button"
             className="ff-btn-secondary"
@@ -529,19 +899,40 @@ Total Price: ${priceText}`;
         )}
       </div>
 
-      <div className="builder-header" style={{ marginBottom: '1.5rem', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+      <div
+        className="builder-header"
+        style={{
+          marginBottom: '1.5rem',
+          textAlign: 'left',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
         <div style={{ flex: '1', minWidth: '280px' }}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h2
+            style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
             <span>✦</span> Submarine Set Builder
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-            Choose components and set quantities per part, or use the set multiplier to order multiple identical builds at once.
+            Choose components and set quantities per part, or use the set multiplier to order
+            multiple identical builds at once. Submit your selection to get an order code.
           </p>
         </div>
 
         {/* Name editor for the active build */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '200px' }}>
-          <label style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-gold-light)' }}>
+          <label
+            style={{
+              fontSize: '0.72rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              color: 'var(--color-gold-light)',
+            }}
+          >
             Set / Build Name
           </label>
           <input
@@ -565,24 +956,37 @@ Total Price: ${priceText}`;
       </div>
 
       {/* Preset selections */}
-      <div className="ff-card-framed" style={{
-        marginBottom: '1.5rem',
-        padding: '1.25rem',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.75rem',
-        background: 'linear-gradient(135deg, rgba(197,160,89,0.03) 0%, rgba(21,31,51,0.1) 100%)',
-        borderLeft: '3px solid var(--color-gold)',
-      }}>
+      <div
+        className="ff-card-framed"
+        style={{
+          marginBottom: '1.5rem',
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+          background: 'linear-gradient(135deg, rgba(197,160,89,0.03) 0%, rgba(21,31,51,0.1) 100%)',
+          borderLeft: '3px solid var(--color-gold)',
+        }}
+      >
         <div style={{ textAlign: 'left' }}>
-          <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-gold-light)', marginBottom: '0.2rem' }}>
+          <div
+            style={{
+              fontSize: '0.8rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--color-gold-light)',
+              marginBottom: '0.2rem',
+            }}
+          >
             Quick Set Presets (Active Set Only)
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
             Select a common configuration to instantly pre-fill components
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
+        <div
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}
+        >
           {PRESETS.map((preset) => {
             const isActive = activePreset === preset.name;
             return (
@@ -609,13 +1013,15 @@ Total Price: ${priceText}`;
                 <span style={{ fontSize: '0.9rem', color: isActive ? '#121824' : 'var(--color-gold)' }}>
                   {preset.name}
                 </span>
-                <span style={{ 
-                  fontSize: '0.65rem', 
-                  color: isActive ? 'rgba(18, 24, 36, 0.8)' : 'var(--color-text-muted)', 
-                  fontWeight: 'normal',
-                  textTransform: 'none',
-                  letterSpacing: 'normal'
-                }}>
+                <span
+                  style={{
+                    fontSize: '0.65rem',
+                    color: isActive ? 'rgba(18, 24, 36, 0.8)' : 'var(--color-text-muted)',
+                    fontWeight: 'normal',
+                    textTransform: 'none',
+                    letterSpacing: 'normal',
+                  }}
+                >
                   {preset.name === 'WSUC' && 'Standard'}
                   {preset.name === 'SSSS' && 'All Shark'}
                   {preset.name === 'WSUC++' && 'Modified'}
@@ -628,19 +1034,30 @@ Total Price: ${priceText}`;
       </div>
 
       {/* Set multiplier banner */}
-      <div className="ff-card-framed" style={{
-        marginBottom: '1.5rem',
-        padding: '1rem 1.25rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '1rem',
-        background: 'linear-gradient(135deg, rgba(197,160,89,0.05) 0%, rgba(21,31,51,0.3) 100%)',
-        borderLeft: '3px solid var(--color-gold)',
-      }}>
+      <div
+        className="ff-card-framed"
+        style={{
+          marginBottom: '1.5rem',
+          padding: '1rem 1.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          background: 'linear-gradient(135deg, rgba(197,160,89,0.05) 0%, rgba(21,31,51,0.3) 100%)',
+          borderLeft: '3px solid var(--color-gold)',
+        }}
+      >
         <div style={{ textAlign: 'left' }}>
-          <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-gold-light)', marginBottom: '0.2rem' }}>
+          <div
+            style={{
+              fontSize: '0.8rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--color-gold-light)',
+              marginBottom: '0.2rem',
+            }}
+          >
             Number of Sets (Active Set Only)
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
@@ -660,7 +1077,7 @@ Total Price: ${priceText}`;
           <input
             type="number"
             min="0"
-            value={allSameQty && setCount > 0 ? setCount : (setCount === 0 ? 0 : '')}
+            value={allSameQty && setCount > 0 ? setCount : setCount === 0 ? 0 : ''}
             placeholder="—"
             onChange={(e) => handleSetCountInput(e.target.value)}
             style={{
@@ -695,7 +1112,6 @@ Total Price: ${priceText}`;
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }} className="builder-grid-layout">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }} className="builder-columns-wrapper">
-
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
             {PART_TYPES.map((type: PartType) => (
               <PartSelector
@@ -706,8 +1122,7 @@ Total Price: ${priceText}`;
                 onSelectPart={(part) => handleSelect(type, part)}
                 quantity={quantities[type]}
                 onQuantityChange={(qty) => handleQuantityChange(type, qty)}
-                partIngredients={partIngredients}
-                craftableSets={setCraftableCount.craftable}
+                craftability={partCraftability[type] ?? { craftable: 0, hasRecipe: false, bottlenecks: [] }}
               />
             ))}
           </div>
@@ -717,25 +1132,86 @@ Total Price: ${priceText}`;
             const mrmPart = parts.find((p) => p.partType === 'Materials');
             if (!mrmPart) return null;
             return (
-              <div className="ff-card-framed" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <div
+                className="ff-card-framed"
+                style={{
+                  padding: '1.25rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '1rem',
+                }}
+              >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', textAlign: 'left' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                     <span style={{ color: 'var(--color-gold)' }}>✦</span>
-                     <h3 style={{ fontSize: '1.15rem', color: 'var(--color-text-title)', margin: 0 }}>Magitek Repair Materials</h3>
+                    <span style={{ color: 'var(--color-gold)' }}>✦</span>
+                    <h3 style={{ fontSize: '1.15rem', color: 'var(--color-text-title)', margin: 0 }}>
+                      Magitek Repair Materials
+                    </h3>
                   </div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginLeft: '1.1rem', fontStyle: 'italic' }}>
-                    * Bulk discount does not apply to materials
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      color: 'var(--color-text-muted)',
+                      marginLeft: '1.1rem',
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    {mrmPart.stock > 0
+                      ? `${formatNumber(mrmPart.stock)} in stock`
+                      : 'Currently out of stock'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <div className="gil-price" style={{ fontSize: '1rem' }}>
-                    <span>{formatGil(mrmPart.price).replace(' Gil', '')}</span><span className="gil-coin">G</span> ea.
+                    <span>{formatGil(mrmPart.price).replace(' Gil', '')}</span>
+                    <span className="gil-coin">G</span> ea.
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Qty:</span>
-                    <button type="button" className="ff-btn-secondary" style={{ padding: '0.15rem 0.4rem', height: '26px' }} onClick={() => handleQuantityChange('Materials', Math.max(0, quantities.Materials - 1))}><Minus size={10} /></button>
-                    <input type="number" min="0" value={quantities.Materials} onChange={(e) => { const n = parseInt(e.target.value, 10); if (!isNaN(n) && n >= 0) handleQuantityChange('Materials', n); }} style={{ width: '90px', textAlign: 'center', background: 'var(--bg-input)', border: '1px solid rgba(197,160,89,0.2)', borderRadius: '4px', color: 'var(--color-text-title)', padding: '0.15rem', height: '26px', boxSizing: 'border-box' }} />
-                    <button type="button" className="ff-btn-secondary" style={{ padding: '0.15rem 0.4rem', height: '26px' }} onClick={() => handleQuantityChange('Materials', quantities.Materials + 1)}><Plus size={10} /></button>
+                    <span
+                      style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}
+                    >
+                      Qty:
+                    </span>
+                    <button
+                      type="button"
+                      className="ff-btn-secondary"
+                      style={{ padding: '0.15rem 0.4rem', height: '26px' }}
+                      onClick={() =>
+                        handleQuantityChange('Materials', Math.max(0, quantities.Materials - 1))
+                      }
+                    >
+                      <Minus size={10} />
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      value={quantities.Materials}
+                      onChange={(e) => {
+                        const n = parseInt(e.target.value, 10);
+                        if (!isNaN(n) && n >= 0) handleQuantityChange('Materials', n);
+                      }}
+                      style={{
+                        width: '90px',
+                        textAlign: 'center',
+                        background: 'var(--bg-input)',
+                        border: '1px solid rgba(197,160,89,0.2)',
+                        borderRadius: '4px',
+                        color: 'var(--color-text-title)',
+                        padding: '0.15rem',
+                        height: '26px',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="ff-btn-secondary"
+                      style={{ padding: '0.15rem 0.4rem', height: '26px' }}
+                      onClick={() => handleQuantityChange('Materials', quantities.Materials + 1)}
+                    >
+                      <Plus size={10} />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -744,19 +1220,22 @@ Total Price: ${priceText}`;
 
           {/* ── Crafting Stock Availability Banner ── */}
           {anySelected && (
-            <div className="ff-alert" style={{
-              textAlign: 'left',
-              margin: '0 0 1.5rem 0',
-              padding: '1.25rem',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '0.75rem',
-              borderLeft: `4px solid ${hasInsufficientParts ? 'var(--color-gold)' : 'var(--color-success)'}`,
-              background: hasInsufficientParts
-                ? 'linear-gradient(135deg, rgba(197,160,89,0.04) 0%, rgba(21,31,51,0.2) 100%)'
-                : 'linear-gradient(135deg, rgba(16,185,129,0.04) 0%, rgba(21,31,51,0.2) 100%)',
-              color: 'var(--color-text-main)',
-            }}>
+            <div
+              className="ff-alert"
+              style={{
+                textAlign: 'left',
+                margin: '0 0 1.5rem 0',
+                padding: '1.25rem',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.75rem',
+                borderLeft: `4px solid ${hasInsufficientParts ? 'var(--color-gold)' : 'var(--color-success)'}`,
+                background: hasInsufficientParts
+                  ? 'linear-gradient(135deg, rgba(197,160,89,0.04) 0%, rgba(21,31,51,0.2) 100%)'
+                  : 'linear-gradient(135deg, rgba(16,185,129,0.04) 0%, rgba(21,31,51,0.2) 100%)',
+                color: 'var(--color-text-main)',
+              }}
+            >
               {hasInsufficientParts ? (
                 <>
                   <Info size={18} style={{ color: 'var(--color-gold)', flexShrink: 0, marginTop: '0.1rem' }} />
@@ -764,13 +1243,17 @@ Total Price: ${priceText}`;
                     <strong style={{ fontSize: '0.9rem', color: 'var(--color-gold-light)' }}>
                       Custom Crafting Notice
                     </strong>
-                    <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
-                      Some of the parts that you selected can't be crafted instantly, so it may take a bit longer to fulfill. Everything else looks fine!
+                    <span
+                      style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}
+                    >
+                      Some of the parts that you selected can't be crafted instantly, so it may take a
+                      bit longer to fulfill. Everything else looks fine!
                     </span>
-                    {setCraftableCount.hasRecipes && setCraftableCount.craftable > 0 && (
+                    {setCraftableCount.hasRecipe && setCraftableCount.craftable > 0 && (
                       <span style={{ fontSize: '0.78rem', color: 'var(--color-gold-light)', marginTop: '0.25rem' }}>
                         <Hammer size={10} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                        Enough ingredients to craft <strong>{setCraftableCount.craftable}</strong> complete {setCraftableCount.craftable === 1 ? 'set' : 'sets'}
+                        Enough ingredients to craft <strong>{formatNumber(setCraftableCount.craftable)}</strong>{' '}
+                        complete {setCraftableCount.craftable === 1 ? 'set' : 'sets'}
                       </span>
                     )}
                   </div>
@@ -782,13 +1265,16 @@ Total Price: ${priceText}`;
                     <strong style={{ fontSize: '0.9rem', color: 'var(--color-success)' }}>
                       All Materials Available
                     </strong>
-                    <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}>
+                    <span
+                      style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: '1.5' }}
+                    >
                       All materials for your craft are in-stock, so craft will be quick!
                     </span>
-                    {setCraftableCount.hasRecipes && setCraftableCount.craftable > 0 && (
+                    {setCraftableCount.hasRecipe && setCraftableCount.craftable > 0 && (
                       <span style={{ fontSize: '0.78rem', color: 'var(--color-success)', marginTop: '0.25rem' }}>
                         <Hammer size={10} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                        Enough ingredients to craft <strong>{setCraftableCount.craftable}</strong> complete {setCraftableCount.craftable === 1 ? 'set' : 'sets'}
+                        Enough ingredients to craft <strong>{formatNumber(setCraftableCount.craftable)}</strong>{' '}
+                        complete {setCraftableCount.craftable === 1 ? 'set' : 'sets'}
                       </span>
                     )}
                   </div>
@@ -798,19 +1284,24 @@ Total Price: ${priceText}`;
           )}
 
           {/* Summary card */}
-          <div className="ff-card-framed" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.5rem',
-            background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(21, 31, 51, 0.4) 100%)',
-          }}>
-            <div style={{
+          <div
+            className="ff-card-framed"
+            style={{
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              borderBottom: '1px solid rgba(197, 160, 89, 0.15)',
-              paddingBottom: '0.75rem',
-            }}>
+              flexDirection: 'column',
+              gap: '1.5rem',
+              background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(21, 31, 51, 0.4) 100%)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                borderBottom: '1px solid rgba(197, 160, 89, 0.15)',
+                paddingBottom: '0.75rem',
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <Anchor style={{ color: 'var(--color-gold)' }} />
                 <h3 style={{ fontSize: '1.2rem', color: 'var(--color-text-title)' }}>Order Summary</h3>
@@ -823,43 +1314,85 @@ Total Price: ${priceText}`;
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', textAlign: 'left' }}>
-                <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05rem', color: 'var(--color-gold-light)' }}>
+                <span
+                  style={{
+                    fontSize: '0.8rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05rem',
+                    color: 'var(--color-gold-light)',
+                  }}
+                >
                   Selected Components
                 </span>
 
                 {builds.map((build, index) => {
                   const buildSelections = build.selections;
                   const buildQuantities = build.quantities;
-                  const hasParts = ALL_PART_TYPES.some(type => buildSelections[type] !== null && buildQuantities[type] > 0);
+                  const hasParts = ALL_PART_TYPES.some(
+                    (type) => buildSelections[type] !== null && buildQuantities[type] > 0
+                  );
                   if (!hasParts) return null;
-                  
+
                   return (
-                    <div key={build.id} style={{ marginBottom: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-gold)', borderBottom: '1px solid rgba(197, 160, 89, 0.1)', paddingBottom: '0.2rem' }}>
+                    <div
+                      key={build.id}
+                      style={{ marginBottom: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}
+                    >
+                      <div
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 'bold',
+                          color: 'var(--color-gold)',
+                          borderBottom: '1px solid rgba(197, 160, 89, 0.1)',
+                          paddingBottom: '0.2rem',
+                        }}
+                      >
                         {build.name || `Build ${index + 1}`}
                       </div>
                       {ALL_PART_TYPES.map((type: PartType) => {
                         const part = buildSelections[type];
                         const qty = buildQuantities[type];
                         if (!part || qty === 0) return null;
-                        
+
                         return (
-                          <div key={type} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>{type === 'Materials' ? 'Extra' : type}:</span>
-                            <span style={{ fontWeight: '500', color: 'var(--color-text-title)', textAlign: 'right', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div
+                            key={type}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              fontSize: '0.82rem',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                            }}
+                          >
+                            <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                              {type === 'Materials' ? 'Extra' : type}:
+                            </span>
+                            <span
+                              style={{
+                                fontWeight: '500',
+                                color: 'var(--color-text-title)',
+                                textAlign: 'right',
+                                flex: 1,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
                               {part.className}
                             </span>
-                            <span style={{
-                              fontSize: '0.68rem',
-                              background: 'rgba(197,160,89,0.12)',
-                              color: 'var(--color-gold)',
-                              borderRadius: '3px',
-                              padding: '0.05rem 0.25rem',
-                              fontWeight: '700',
-                              flexShrink: 0,
-                            }}>
+                            <span
+                              style={{
+                                fontSize: '0.68rem',
+                                background: 'rgba(197,160,89,0.12)',
+                                color: 'var(--color-gold)',
+                                borderRadius: '3px',
+                                padding: '0.05rem 0.25rem',
+                                fontWeight: '700',
+                                flexShrink: 0,
+                              }}
+                            >
                               ×{qty}
                             </span>
                           </div>
@@ -870,87 +1403,141 @@ Total Price: ${priceText}`;
                 })}
               </div>
 
-              <div style={{
-                background: 'var(--bg-input)',
-                padding: '1.25rem',
-                borderRadius: '6px',
-                border: '1px solid rgba(197, 160, 89, 0.15)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                gap: '0.5rem',
-              }}>
-                {activeDiscount.discountPercent > 0 ? (
+              <div
+                style={{
+                  background: 'var(--bg-input)',
+                  padding: '1.25rem',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(197, 160, 89, 0.15)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                {activeDiscount && (
                   <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.4rem' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: '0.82rem',
+                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        paddingBottom: '0.4rem',
+                      }}
+                    >
                       <span style={{ color: 'var(--color-text-muted)' }}>Subtotal:</span>
                       <span className="gil-price" style={{ fontSize: '0.92rem' }}>
-                        <span>{new Intl.NumberFormat('en-US').format(overallSubtotal)}</span>
-                        <span className="gil-coin" style={{ width: '13px', height: '13px', fontSize: '8px' }}>G</span>
+                        <span>{formatNumber(overallSubtotal)}</span>
+                        <span className="gil-coin" style={{ width: '13px', height: '13px', fontSize: '8px' }}>
+                          G
+                        </span>
                       </span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--color-success)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.4rem' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: '0.82rem',
+                        color: 'var(--color-success)',
+                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        paddingBottom: '0.4rem',
+                      }}
+                    >
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <Tag size={12} /> Bulk Discount ({activeDiscount.discountPercent}%):
+                        <Tag size={12} /> Bulk Discount ({discountPct}%):
                       </span>
-                      <span>-{new Intl.NumberFormat('en-US').format(discountAmount)} G</span>
+                      <span>−{formatNumber(discountAmount)} G</span>
                     </div>
                   </>
-                ) : null}
+                )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem', marginTop: activeDiscount.discountPercent > 0 ? '0.4rem' : '0' }}>
-                  <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.2rem',
+                    marginTop: activeDiscount ? '0.4rem' : '0',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '0.78rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                      color: 'var(--color-text-muted)',
+                    }}
+                  >
                     Total Price
                   </span>
                   <div className="gil-price" style={{ fontSize: '1.8rem', textShadow: '0 0 10px rgba(197,160,89,0.2)' }}>
-                    <span>{new Intl.NumberFormat('en-US').format(totalPrice)}</span>
+                    <span>{formatNumber(totalPrice)}</span>
                     <span className="gil-coin" style={{ width: '22px', height: '22px', fontSize: '12px' }}>G</span>
                   </div>
                   {totalParts > 0 && (
                     <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                      {totalParts} part{totalParts > 1 ? 's' : ''} ordered
+                      {formatNumber(totalParts)} part{totalParts > 1 ? 's' : ''} ordered
+                    </span>
+                  )}
+                  {hasUnpricedParts && (
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-warning)', textAlign: 'center' }}>
+                      Some selected parts have no price set yet — the final total will be confirmed
+                      by @Alamai.
                     </span>
                   )}
                 </div>
               </div>
-
             </div>
 
             {/* Discount Legend/Guide */}
             {discounts.length > 0 && (
-              <div style={{
-                background: 'rgba(197, 160, 89, 0.02)',
-                border: '1px solid rgba(197, 160, 89, 0.1)',
-                borderRadius: '4px',
-                padding: '0.75rem 1rem',
-                textAlign: 'left',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.5rem'
-              }}>
-                <div style={{
-                  fontSize: '0.75rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: 'var(--color-gold-light)',
+              <div
+                style={{
+                  background: 'rgba(197, 160, 89, 0.02)',
+                  border: '1px solid rgba(197, 160, 89, 0.1)',
+                  borderRadius: '4px',
+                  padding: '0.75rem 1rem',
+                  textAlign: 'left',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  fontWeight: '600',
-                  flexWrap: 'wrap',
+                  flexDirection: 'column',
                   gap: '0.5rem',
-                }}>
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: 'var(--color-gold-light)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontWeight: '600',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                  }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <Tag size={12} /> Bulk Discount Guide
                   </div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'none', letterSpacing: 'normal' }}>
-                    Current Parts Count: <strong style={{ color: 'var(--color-gold)', fontSize: '0.8rem' }}>{totalParts}</strong>
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      color: 'var(--color-text-muted)',
+                      textTransform: 'none',
+                      letterSpacing: 'normal',
+                    }}
+                  >
+                    Current Parts Count:{' '}
+                    <strong style={{ color: 'var(--color-gold)', fontSize: '0.8rem' }}>
+                      {formatNumber(totalParts)}
+                    </strong>
                   </span>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', fontSize: '0.72rem' }}>
                   {discounts.map((d) => {
-                    const requiredParts = getRequiredPartsForDiscount(d);
-                    const isCurrent = Number(activeDiscount.threshold) === Number(d.threshold);
+                    const isCurrent = activeDiscount?.threshold === d.threshold;
                     return (
                       <div
                         key={d.id}
@@ -966,8 +1553,10 @@ Total Price: ${priceText}`;
                           gap: '0.25rem',
                         }}
                       >
-                        <span>{requiredParts}+ Parts:</span>
-                        <span style={{ color: isCurrent ? 'var(--color-success)' : 'var(--color-text-title)' }}>{d.discountPercent}% Off</span>
+                        <span>{formatNumber(d.threshold)}+ Parts:</span>
+                        <span style={{ color: isCurrent ? 'var(--color-success)' : 'var(--color-text-title)' }}>
+                          {Number(d.discountPercent)}% Off
+                        </span>
                         {isCurrent && <span style={{ fontSize: '0.65rem' }}>★ Active</span>}
                       </div>
                     );
@@ -980,48 +1569,83 @@ Total Price: ${priceText}`;
               <div className="ff-alert ff-alert-warning" style={{ textAlign: 'left', margin: 0 }}>
                 <Info size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
                 <div>
-                  <strong style={{ display: 'block', marginBottom: '0.15rem' }}>Includes Custom-Crafted Parts</strong>
+                  <strong style={{ display: 'block', marginBottom: '0.15rem' }}>
+                    Includes Custom-Crafted Parts
+                  </strong>
                   <span style={{ fontSize: '0.8rem' }}>
-                    One or more selected parts are currently out of stock. These will be custom-crafted for you. Delivery may take 1-7 days depending on material availability and current load.
+                    One or more selected parts are currently out of stock. These will be
+                    custom-crafted for you. Delivery may take 1-7 days depending on material
+                    availability and current load.
                   </span>
                 </div>
               </div>
             )}
 
             {!hasOutOfStock && anySelected && (
-              <div className="ff-alert ff-alert-info" style={{ textAlign: 'left', margin: 0, background: 'rgba(16, 185, 129, 0.05)', color: 'var(--color-success)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
+              <div
+                className="ff-alert ff-alert-info"
+                style={{
+                  textAlign: 'left',
+                  margin: 0,
+                  background: 'rgba(16, 185, 129, 0.05)',
+                  color: 'var(--color-success)',
+                  borderColor: 'rgba(16, 185, 129, 0.2)',
+                }}
+              >
                 <Check size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
                 <div>
-                  <strong style={{ display: 'block', marginBottom: '0.15rem' }}>All Selected Components In Stock</strong>
+                  <strong style={{ display: 'block', marginBottom: '0.15rem' }}>
+                    All Selected Components In Stock
+                  </strong>
                   <span style={{ fontSize: '0.8rem', color: 'var(--color-text-main)' }}>
-                    Excellent selection! All selected parts are currently in inventory. Ready for immediate delivery.
+                    Excellent selection! All selected parts are currently in inventory. Ready for
+                    immediate delivery.
                   </span>
                 </div>
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-              <button
-                type="button"
-                className="ff-btn glow-active"
-                style={{ flex: 1, minWidth: '200px' }}
-                onClick={handleCopy}
-                disabled={!anySelected}
-              >
-                {copied ? (
-                  <><Check size={16} /> Order Copied!</>
-                ) : (
-                  <><Copy size={16} /> Copy Order Request</>
-                )}
-              </button>
-            </div>
+            {showSubmitForm ? (
+              <OrderSubmitForm
+                items={orderItems}
+                subtotal={overallSubtotal}
+                discountPct={discountPct}
+                discountAmt={discountAmount}
+                total={totalPrice}
+                onCancel={() => setShowSubmitForm(false)}
+                onSubmitted={(order) => {
+                  setSubmittedOrder(order);
+                  setShowSubmitForm(false);
+                }}
+              />
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    className="ff-btn glow-active"
+                    style={{ flex: 1, minWidth: '200px' }}
+                    onClick={() => setShowSubmitForm(true)}
+                    disabled={!anySelected || orderItems.length === 0}
+                  >
+                    <Send size={16} /> Send Order Request
+                  </button>
+                </div>
 
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', textAlign: 'center', marginTop: '-0.5rem' }}>
-              Copy this order request and paste it directly to @Alamai via Discord.
-            </p>
-
+                <p
+                  style={{
+                    color: 'var(--color-text-muted)',
+                    fontSize: '0.75rem',
+                    textAlign: 'center',
+                    marginTop: '-0.5rem',
+                  }}
+                >
+                  Submitting creates your order request — you'll receive a confirmation code to send
+                  to @Alamai on Discord.
+                </p>
+              </>
+            )}
           </div>
-
         </div>
       </div>
     </div>

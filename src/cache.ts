@@ -31,7 +31,7 @@ export function setCache<T>(key: string, data: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(entry));
   } catch (e) {
-    console.warn("Cache write failed (storage full?):", e);
+    console.warn('Cache write failed (storage full?):', e);
   }
 }
 
@@ -39,15 +39,18 @@ export function clearCache(key: string): void {
   localStorage.removeItem(key);
 }
 
-export const CRAFTERS_TTL = 5 * 60 * 1000;
+// ─── Cache keys & TTLs ────────────────────────────────────────────────────────
 
-export const ADMIN_SHEET_INGREDIENTS_TTL = 24 * 60 * 60 * 1000;
+export const RECIPES_TTL = 5 * 60 * 1000;
+export const DISCOUNTS_TTL = 5 * 60 * 1000;
+export const MISSING_TTL = 3 * 60 * 1000;
+export const PRICES_TTL = 5 * 60 * 1000;
+export const PRICE_SETTINGS_TTL = 30 * 60 * 1000;
+export const IN_PROGRESS_TTL = 60 * 1000;
 
-// Part ingredient recipes are static-ish — cache for 10 minutes
-export const PART_INGREDIENTS_TTL = 10 * 60 * 1000;
-
-export const CACHE_KEY_CRAFTERS_SHEET = "ff14_cache_crafters_sheet";
-export const CACHE_KEY_CRAFTERS_ACTIVE = "ff14_cache_crafters_active";
-export const CACHE_KEY_ADMIN_SHEET_INGREDIENTS =
-  "ff14_cache_admin_sheet_ingredients";
-export const CACHE_KEY_PART_INGREDIENTS = "ff14_cache_part_ingredients";
+export const CACHE_KEY_RECIPES = 'ff14_cache_recipes';
+export const CACHE_KEY_DISCOUNTS = 'ff14_cache_discounts';
+export const CACHE_KEY_MISSING = 'ff14_cache_missing_materials';
+export const CACHE_KEY_PRICES = 'ff14_cache_prices';
+export const CACHE_KEY_PRICE_SETTINGS = 'ff14_cache_price_settings';
+export const CACHE_KEY_IN_PROGRESS = 'ff14_cache_in_progress_orders';

@@ -1,49 +1,31 @@
-import { CrafterItem, PartIngredient, Order } from '../types';
+import { ApiPartMaterial, ApiSubmarinePart, InProgressOrder } from '../api/types';
 
 /**
- * Returns true if an order should be considered "active demand"
- * — i.e. it counts against available stock.
- *
- * Rules:
- *  - Status must be 'pending' or 'in_progress' (not completed / cancelled).
- *  - Fulfillment date is 'ASAP' OR falls within the next 7 days.
+ * Materials purchasable from an NPC vendor are treated as infinitely available —
+ * they can always be bought for gil, so they never bottleneck a craft.
  */
-export function isOrderActiveDeadline(order: Order): boolean {
-  if (order.status === 'completed' || order.status === 'cancelled') return false;
-
-  const fulfillment = order.fulfillmentDate ?? 'ASAP';
-  if (fulfillment === 'ASAP') return true;
-
-  const sevenDaysFromNow = Date.now() + 7 * 24 * 60 * 60 * 1000;
-  try {
-    const d = new Date(fulfillment).getTime();
-    return d <= sevenDaysFromNow;
-  } catch {
-    return false;
-  }
+export function isNpcAvailable(material: ApiPartMaterial['material']): boolean {
+  return material.npcPrice !== null && material.npcPrice !== undefined;
 }
 
 /**
- * Builds a map of { ingredientNameLower → qty } representing all ingredients
- * already committed to active orders.
+ * Builds a map of { materialId → qty } representing all ingredients already
+ * committed to in-progress orders (the only orders that are actively being built).
  */
-export function computeCommittedIngredients(
-  orders: Order[],
-  partIngredients: PartIngredient[]
+export function computeCommittedMaterials(
+  inProgressOrders: InProgressOrder[],
+  partsById: Record<string, ApiSubmarinePart>
 ): Record<string, number> {
   const committed: Record<string, number> = {};
 
-  const recipeByPartId: Record<string, PartIngredient> = {};
-  partIngredients.forEach((r) => { recipeByPartId[r.partId] = r; });
-
-  orders.filter(isOrderActiveDeadline).forEach((order) => {
+  inProgressOrders.forEach((order) => {
     order.items.forEach((item) => {
-      const recipe = recipeByPartId[item.partId];
-      if (!recipe) return; // no recipe defined — skip
+      const recipe = partsById[item.partId];
+      if (!recipe?.materials?.length) return;
 
-      recipe.ingredients.forEach((ing) => {
-        const key = ing.name.toLowerCase();
-        committed[key] = (committed[key] ?? 0) + ing.quantity * item.quantity;
+      recipe.materials.forEach((mat) => {
+        committed[mat.material.id] =
+          (committed[mat.material.id] ?? 0) + mat.quantity * item.quantity;
       });
     });
   });
@@ -52,103 +34,106 @@ export function computeCommittedIngredients(
 }
 
 /**
- * Builds a map of { ingredientNameLower → availableQty } from the live API stock
- * minus committed ingredient demand.
+ * Builds a map of { materialId → availableQty }: live inventory stock minus
+ * everything already committed to in-progress orders.
  */
-export function computeAvailableStock(
-  stockItems: CrafterItem[],
-  orders: Order[],
-  partIngredients: PartIngredient[]
+export function computeAvailableMaterials(
+  parts: ApiSubmarinePart[],
+  committed: Record<string, number>
 ): Record<string, number> {
-  // Build base stock map from API
-  const stockMap: Record<string, number> = {};
-  stockItems.forEach((item) => {
-    stockMap[item.ingredient.toLowerCase()] = item.stock;
+  const available: Record<string, number> = {};
+
+  parts.forEach((part) => {
+    (part.materials ?? []).forEach((mat) => {
+      if (!(mat.material.id in available)) {
+        available[mat.material.id] = isNpcAvailable(mat.material)
+          ? Number.POSITIVE_INFINITY
+          : mat.material.currentStock;
+      }
+    });
   });
 
-  const committed = computeCommittedIngredients(orders, partIngredients);
-
-  // Subtract committed
-  const available: Record<string, number> = { ...stockMap };
-  Object.entries(committed).forEach(([key, qty]) => {
-    available[key] = (available[key] ?? 0) - qty;
+  Object.entries(committed).forEach(([id, qty]) => {
+    if (available[id] !== Number.POSITIVE_INFINITY) {
+      available[id] = (available[id] ?? 0) - qty;
+    }
   });
 
   return available;
 }
 
-interface SelectedPart {
-  partId: string;
-  quantity: number;
+export interface CraftabilityResult {
+  /** How many units can be made with available materials (0 when no recipe). */
+  craftable: number;
+  /** True when the selection has a material recipe at all. */
+  hasRecipe: boolean;
+  /** Ingredients that fall short, with resolved material names. */
+  bottlenecks: { name: string; available: number; needed: number }[];
 }
 
 /**
- * Computes how many sets (i.e. full copies of the user's current selection) can
- * be crafted given the available ingredient stock.
- *
- * Returns an object with:
- *  - craftable: number of complete sets that can be made
- *  - bottlenecks: which ingredients are the limiting factor
- *  - ingredientDemand: total ingredients needed for 1 set
+ * Solves the min-craftable count over a demand map of
+ * { materialId → { name, needed } } against the available stock map.
  */
-export function computeCraftableCount(
-  selectedParts: SelectedPart[],
-  availableStock: Record<string, number>,
-  partIngredients: PartIngredient[]
-): {
-  craftable: number;
-  bottlenecks: { name: string; available: number; needed: number }[];
-  ingredientDemand: Record<string, number>;
-  hasRecipes: boolean;
-} {
-  const NPCTrades = new Set([
-    "walnut lumber", "iron rivets", "mythril rivets", "oak lumber",
-    "steel plate", "holy cedar lumber", "mythrite ingot", "titanium ingot",
-    "steel rivets", "steel ingot", "mythril ingot", "clear glass lens",
-    "wing glue", "enchanted hardsilver ink", "hardsilver ingot", "mythrite rivets",
-  ]);
-
-  const recipeByPartId: Record<string, PartIngredient> = {};
-  partIngredients.forEach((r) => { recipeByPartId[r.partId] = r; });
-
-  // Total ingredient demand per one full user selection
-  const demand: Record<string, number> = {};
-  let hasRecipes = false;
-
-  selectedParts.forEach(({ partId, quantity }) => {
-    if (!partId || quantity <= 0) return;
-    const recipe = recipeByPartId[partId];
-    if (!recipe) return;
-    hasRecipes = true;
-    recipe.ingredients.forEach((ing) => {
-      const key = ing.name.toLowerCase();
-      demand[key] = (demand[key] ?? 0) + ing.quantity * quantity;
-    });
-  });
-
-  if (!hasRecipes || Object.keys(demand).length === 0) {
-    return { craftable: 0, bottlenecks: [], ingredientDemand: demand, hasRecipes: false };
+function solveCraftable(
+  demand: Map<string, { name: string; needed: number }>,
+  availableMaterials: Record<string, number>
+): CraftabilityResult {
+  if (demand.size === 0) {
+    return { craftable: 0, hasRecipe: false, bottlenecks: [] };
   }
 
-  let craftable = Infinity;
+  let craftable = Number.POSITIVE_INFINITY;
   const bottlenecks: { name: string; available: number; needed: number }[] = [];
 
-  Object.entries(demand).forEach(([key, needed]) => {
-    // NPC-trade ingredients are essentially infinite — skip them
-    if (NPCTrades.has(key)) return;
+  demand.forEach(({ name, needed }, materialId) => {
+    const available = availableMaterials[materialId] ?? 0;
+    if (available === Number.POSITIVE_INFINITY) return;
 
-    const available = availableStock[key] ?? 0;
-    const canMake = needed > 0 ? Math.floor(available / needed) : Infinity;
+    const canMake = needed > 0 ? Math.floor(available / needed) : Number.POSITIVE_INFINITY;
     if (canMake < craftable) craftable = canMake;
     if (available < needed) {
-      bottlenecks.push({ name: key, available: Math.max(0, available), needed });
+      bottlenecks.push({ name, available: Math.max(0, available), needed });
     }
   });
 
   return {
-    craftable: craftable === Infinity ? 0 : Math.max(0, craftable),
+    craftable: craftable === Number.POSITIVE_INFINITY ? 0 : Math.max(0, craftable),
+    hasRecipe: true,
     bottlenecks,
-    ingredientDemand: demand,
-    hasRecipes: true,
   };
+}
+
+/** How many units of a single part can be crafted given available materials. */
+export function computePartCraftable(
+  part: ApiSubmarinePart | null,
+  availableMaterials: Record<string, number>
+): CraftabilityResult {
+  const demand = new Map<string, { name: string; needed: number }>();
+  (part?.materials ?? []).forEach((mat) => {
+    demand.set(mat.material.id, { name: mat.material.name, needed: mat.quantity });
+  });
+  return solveCraftable(demand, availableMaterials);
+}
+
+/**
+ * How many complete copies of the given selection (one unit of each part) can be
+ * crafted with the available materials.
+ */
+export function computeSetCraftable(
+  selectedParts: ApiSubmarinePart[],
+  availableMaterials: Record<string, number>
+): CraftabilityResult {
+  const demand = new Map<string, { name: string; needed: number }>();
+  selectedParts.forEach((part) => {
+    (part.materials ?? []).forEach((mat) => {
+      const existing = demand.get(mat.material.id);
+      if (existing) {
+        existing.needed += mat.quantity;
+      } else {
+        demand.set(mat.material.id, { name: mat.material.name, needed: mat.quantity });
+      }
+    });
+  });
+  return solveCraftable(demand, availableMaterials);
 }
