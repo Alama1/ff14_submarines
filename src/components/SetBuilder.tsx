@@ -124,6 +124,7 @@ function createDefaultBuild(id: string, name: string, parts: ApiSubmarinePart[])
 
 interface OrderFormState {
   clientName: string;
+  isAnonymous: boolean;
   contactInfo: string;
   notes: string;
   fulfillmentType: 'asap' | 'date';
@@ -156,6 +157,7 @@ function OrderSubmitForm({
 }: OrderSubmitFormProps) {
   const [form, setForm] = useState<OrderFormState>({
     clientName: '',
+    isAnonymous: false,
     contactInfo: '',
     notes: '',
     fulfillmentType: 'asap',
@@ -182,6 +184,7 @@ function OrderSubmitForm({
     try {
       const order = await submitOrder({
         clientName: form.clientName.trim(),
+        isAnonymous: form.isAnonymous || undefined,
         contactInfo: form.contactInfo.trim() || undefined,
         notes: form.notes.trim() || undefined,
         fulfillmentDt,
@@ -250,6 +253,36 @@ function OrderSubmitForm({
           />
         </div>
       </div>
+
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '0.6rem',
+          cursor: 'pointer',
+          background: 'rgba(197,160,89,0.04)',
+          border: '1px solid rgba(197,160,89,0.12)',
+          borderRadius: '4px',
+          padding: '0.65rem 0.85rem',
+          userSelect: 'none',
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={form.isAnonymous}
+          onChange={(e) => setForm({ ...form, isAnonymous: e.target.checked })}
+          style={{ marginTop: '0.15rem', accentColor: 'var(--color-gold)', cursor: 'pointer' }}
+        />
+        <span style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', textAlign: 'left' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--color-text-main)' }}>
+            Order anonymously
+          </span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+            It fully hides your name in the live in-progress order tracking — you'll show up as
+            “Anonymous” instead.
+          </span>
+        </span>
+      </label>
 
       <div className="form-group" style={{ marginBottom: 0 }}>
         <label className="form-label" style={{ fontSize: '0.75rem' }}>

@@ -93,6 +93,7 @@ export interface CreateOrderItemDto {
 
 export interface CreateOrderDto {
   clientName: string;
+  isAnonymous?: boolean;
   contactInfo?: string;
   notes?: string;
   fulfillmentDt?: string;
