@@ -790,6 +790,7 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
     const items: CreateOrderItemDto[] = [];
     builds.forEach((b) => {
       ALL_PART_TYPES.forEach((type) => {
+        if (type === 'Materials') return;
         const part = b.selections[type];
         const qty = b.quantities[type];
         if (!part || qty <= 0) return;
@@ -1197,55 +1198,15 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                  <div className="gil-price" style={{ fontSize: '1rem' }}>
-                    <span>{formatGil(mrmPart.price).replace(' Gil', '')}</span>
-                    <span className="gil-coin">G</span> ea.
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <span
-                      style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}
-                    >
-                      Qty:
-                    </span>
-                    <button
-                      type="button"
-                      className="ff-btn-secondary"
-                      style={{ padding: '0.15rem 0.4rem', height: '26px' }}
-                      onClick={() =>
-                        handleQuantityChange('Materials', Math.max(0, quantities.Materials - 1))
-                      }
-                    >
-                      <Minus size={10} />
-                    </button>
-                    <input
-                      type="number"
-                      min="0"
-                      value={quantities.Materials}
-                      onChange={(e) => {
-                        const n = parseInt(e.target.value, 10);
-                        if (!isNaN(n) && n >= 0) handleQuantityChange('Materials', n);
-                      }}
-                      style={{
-                        width: '90px',
-                        textAlign: 'center',
-                        background: 'var(--bg-input)',
-                        border: '1px solid rgba(197,160,89,0.2)',
-                        borderRadius: '4px',
-                        color: 'var(--color-text-title)',
-                        padding: '0.15rem',
-                        height: '26px',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="ff-btn-secondary"
-                      style={{ padding: '0.15rem 0.4rem', height: '26px' }}
-                      onClick={() => handleQuantityChange('Materials', quantities.Materials + 1)}
-                    >
-                      <Plus size={10} />
-                    </button>
-                  </div>
+                  <span
+                    style={{
+                      fontSize: '0.85rem',
+                      color: 'var(--color-gold)',
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    Due to high demand, repair kits ordering is temporary paused
+                  </span>
                 </div>
               </div>
             );
