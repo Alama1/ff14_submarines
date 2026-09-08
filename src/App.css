@@ -1,1 +1,95 @@
-/* Styles are located globally in index.css */
+/* ─── App shell ────────────────────────────────────────────────────────────── */
+.app-loading,
+.app-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 1rem;
+}
+
+.app-loading-icon {
+  color: var(--color-gold);
+}
+
+.app-loading-text {
+  font-style: italic;
+  color: var(--color-text-muted);
+  font-family: var(--font-title);
+  letter-spacing: 0.05em;
+}
+
+.app-error-title {
+  color: var(--color-error);
+  font-family: var(--font-title);
+  letter-spacing: 0.05em;
+  font-size: 1.05rem;
+}
+
+.app-error-detail {
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  max-width: 440px;
+  text-align: center;
+}
+
+.app-main {
+  flex: 1;
+  margin-bottom: 3rem;
+}
+
+/* ─── Footer ───────────────────────────────────────────────────────────────── */
+.app-footer {
+  text-align: center;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.app-footer-tagline {
+  margin-bottom: 0.5rem;
+}
+
+.app-footer-legal {
+  opacity: 0.6;
+}
+
+/* ─── Header ───────────────────────────────────────────────────────────────── */
+.app-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.app-brand-icon {
+  color: var(--color-gold);
+  filter: drop-shadow(0 0 8px var(--color-gold-glow));
+}
+
+/* ─── Tab navigation ───────────────────────────────────────────────────────── */
+.tab-btn-icon {
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+
+/* ─── Responsive: tablet & below ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .app-brand-row {
+    gap: 0.5rem;
+  }
+
+  .app-brand-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .app-main {
+    margin-bottom: 2rem;
+  }
+
+  .app-footer {
+    padding-top: 1.25rem;
+  }
+}

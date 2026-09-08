@@ -1,0 +1,282 @@
+.ps-card {
+  padding: 1.25rem;
+}
+
+/* Header */
+.ps-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(197, 160, 89, 0.15);
+  padding-bottom: 0.75rem;
+}
+
+.ps-header-title {
+  font-size: 1.15rem;
+  color: var(--color-text-title);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ps-header-star {
+  color: var(--color-gold);
+}
+
+.ps-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ps-omit-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0.25rem;
+  outline: none;
+  transition: color 0.2s ease;
+}
+
+.ps-omit-btn:hover {
+  color: var(--color-error);
+}
+
+.ps-modified-toggle {
+  opacity: 1;
+  cursor: pointer;
+}
+
+.ps-modified-toggle.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ps-hidden-checkbox {
+  display: none;
+}
+
+.ps-modified-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  transition: color 0.2s ease;
+}
+
+.ps-modified-toggle input:checked ~ .ps-modified-label {
+  color: var(--color-gold);
+}
+
+/* Class selector buttons */
+.ps-class-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.ps-class-btn {
+  flex: 1 1 calc(33.33% - 0.4rem);
+  min-width: 70px;
+  padding: 0.4rem 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  border-radius: 4px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;
+}
+
+.ps-class-btn.is-selected {
+  font-weight: 700;
+  box-shadow: 0 0 10px var(--color-gold-glow);
+}
+
+/* Price + stock bar */
+.ps-price-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-input);
+  padding: 0.6rem 0.8rem;
+  border-radius: 4px 4px 0 0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: none;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ps-price-row {
+  font-size: 1rem;
+}
+
+.ps-price-ea {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  margin-left: 0.25rem;
+}
+
+.ps-badges {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.ps-badge {
+  padding: 0.15rem 0.45rem;
+  font-size: 0.65rem;
+  white-space: nowrap;
+}
+
+.ps-badge svg {
+  margin-right: 2px;
+  vertical-align: middle;
+}
+
+.ps-badge-craft {
+  background: rgba(96, 165, 250, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+}
+
+.ps-badge-partial {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.ps-badge-out {
+  opacity: 0.9;
+}
+
+/* Quantity panel */
+.ps-qty-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: rgba(197, 160, 89, 0.04);
+  padding: 0.75rem 0.8rem;
+  border-radius: 0 0 4px 4px;
+  border: 1px solid rgba(197, 160, 89, 0.12);
+  align-items: stretch;
+}
+
+.ps-qty-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.ps-qty-label {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 0.25rem;
+}
+
+.ps-qty-btn {
+  padding: 0.15rem 0.4rem;
+  height: 26px;
+  font-size: 0.75rem;
+  width: 26px;
+}
+
+.ps-qty-input {
+  width: 90px;
+  text-align: center;
+  background: var(--bg-input);
+  border: 1px solid rgba(197, 160, 89, 0.2);
+  border-radius: 4px;
+  color: var(--color-text-title);
+  font-size: 0.85rem;
+  padding: 0.15rem;
+  height: 26px;
+  box-sizing: border-box;
+}
+
+.ps-subtotal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(197, 160, 89, 0.1);
+  padding-top: 0.5rem;
+  margin-top: 0.1rem;
+}
+
+.ps-subtotal-label {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ps-subtotal-row .gil-price {
+  font-size: 0.88rem;
+}
+
+.ps-subtotal-amount {
+  color: var(--color-gold-light);
+}
+
+.ps-subtotal-coin {
+  width: 14px;
+  height: 14px;
+  font-size: 8px;
+}
+
+/* Empty (omitted) placeholder */
+.ps-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(197, 160, 89, 0.2);
+  border-radius: 4px;
+  padding: 1.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  text-align: center;
+  height: 76px;
+  box-sizing: border-box;
+}
+
+/* ─── Responsive: tablet & below ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .ps-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .ps-class-btn {
+    flex: 1 1 calc(50% - 0.4rem);
+    min-height: 40px;
+  }
+
+  .ps-price-bar {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .ps-qty-btn {
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0;
+  }
+
+  .ps-qty-input {
+    width: 72px;
+    height: 36px;
+    font-size: 16px;
+  }
+}

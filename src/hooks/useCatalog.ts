@@ -17,7 +17,7 @@ export interface CatalogData {
 export interface UseCatalogResult extends CatalogData {
   loading: boolean;
   error: string;
-  refresh: () => Promise<void>;
+  refresh: (bypassCache?: boolean) => Promise<void>;
 }
 
 /**
@@ -33,14 +33,14 @@ export function useCatalog(): UseCatalogResult {
   const [error, setError] = useState('');
   const didFetch = useRef(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (bypassCache = false) => {
     setLoading(true);
     setError('');
     try {
       const [partsData, discountsData, inProgressData] = await Promise.all([
-        fetchSubmarineParts(),
-        fetchDiscounts(),
-        fetchInProgressOrders(),
+        fetchSubmarineParts(bypassCache),
+        fetchDiscounts(bypassCache),
+        fetchInProgressOrders(bypassCache),
       ]);
       setParts(sortParts(partsData));
       setDiscounts([...discountsData].sort((a, b) => a.threshold - b.threshold));

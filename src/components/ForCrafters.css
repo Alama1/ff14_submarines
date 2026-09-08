@@ -1,0 +1,708 @@
+.fc-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Header */
+.fc-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.fc-header-title {
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.fc-header-title svg {
+  color: var(--color-gold);
+}
+
+.fc-header-sub {
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+}
+
+.fc-header-sub strong {
+  color: var(--color-gold);
+}
+
+.fc-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+/* Notices */
+.fc-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 4px;
+  font-size: 0.83rem;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+.fc-notice svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.fc-notice strong {
+  color: var(--color-text-title);
+}
+
+.fc-notice-strong-accent {
+  color: inherit;
+}
+
+.fc-notice-cadence {
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  background: rgba(197, 160, 89, 0.06);
+  border: 1px solid rgba(197, 160, 89, 0.18);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.fc-notice-cadence svg {
+  color: var(--color-gold);
+}
+
+.fc-notice-nq {
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+}
+
+.fc-notice-nq svg {
+  color: #10b981;
+}
+
+.fc-notice-nq strong.fc-notice-strong-accent {
+  color: #10b981;
+}
+
+.fc-notice-deadline {
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.fc-notice-deadline svg {
+  color: #f59e0b;
+}
+
+.fc-notice-deadline strong.fc-notice-strong-accent {
+  color: #f59e0b;
+}
+
+/* Discord CTA */
+.fc-cta {
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg, rgba(197, 160, 89, 0.06) 0%, rgba(21, 31, 51, 0.4) 100%);
+  border-left: 4px solid var(--color-gold);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border-radius: 4px;
+  text-align: left;
+}
+
+.fc-cta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.fc-cta-lead {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.fc-cta-icon {
+  background: rgba(197, 160, 89, 0.12);
+  padding: 0.6rem;
+  border-radius: 50%;
+  color: var(--color-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fc-cta-title {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-text-title);
+  font-weight: 600;
+}
+
+.fc-cta-sub {
+  margin: 0.2rem 0 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.fc-cta-handle {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.5rem 1.1rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-gold-light);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.fc-cta-handle-name {
+  color: var(--color-text-title);
+  background: rgba(197, 160, 89, 0.1);
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+/* Alert / loading / empty states */
+.fc-alert {
+  margin: 0;
+}
+
+.fc-alert svg {
+  flex-shrink: 0;
+}
+
+.fc-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 1rem;
+}
+
+.fc-loading-spinner {
+  color: var(--color-gold);
+}
+
+.fc-loading-text {
+  color: var(--color-text-muted);
+  font-family: var(--font-title);
+  letter-spacing: 0.05em;
+  font-style: italic;
+}
+
+.fc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  gap: 0.75rem;
+  border: 1px dashed rgba(16, 185, 129, 0.3);
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.03);
+}
+
+.fc-empty svg {
+  color: var(--color-success);
+}
+
+.fc-empty-title {
+  font-weight: 600;
+  color: var(--color-text-title);
+}
+
+.fc-empty-sub {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* Claimed summary note */
+.fc-claimed-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.fc-claimed-note svg {
+  color: var(--color-gold);
+}
+
+.fc-claimed-count {
+  color: var(--color-gold);
+}
+
+/* Table card */
+.fc-table-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.fc-toolbar {
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid rgba(197, 160, 89, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  background: rgba(197, 160, 89, 0.02);
+}
+
+.fc-toolbar-filters {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fc-filter-btn {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.8rem;
+  height: 32px;
+}
+
+.fc-filter-btn.is-crafting {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.fc-toolbar-meta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.fc-toolbar-total {
+  color: var(--color-gold);
+}
+
+/* Table (CSS grid — renders as a table on desktop, stacked cards on mobile) */
+.fc-table {
+  width: 100%;
+}
+
+.fc-thead-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid rgba(197, 160, 89, 0.2);
+  background: rgba(197, 160, 89, 0.04);
+}
+
+.fc-th {
+  padding: 0.7rem 1rem;
+  color: var(--color-gold-light);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  user-select: none;
+  text-align: left;
+  font-family: inherit;
+  background: none;
+  border: none;
+}
+
+.fc-th.is-sortable {
+  cursor: pointer;
+}
+
+.fc-th.is-right,
+.fc-cell.is-right {
+  text-align: right;
+}
+
+.fc-body-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(4, minmax(0, 1fr));
+  align-items: start;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s;
+}
+
+.fc-body-row:hover {
+  background: rgba(197, 160, 89, 0.04);
+}
+
+.fc-body-row.is-claimed {
+  opacity: 0.55;
+}
+
+.fc-cell {
+  padding: 0.65rem 1rem;
+  min-width: 0;
+}
+
+.fc-stat-label {
+  display: none;
+}
+
+.fc-empty-row {
+  display: block;
+}
+
+.fc-empty-cell {
+  padding: 3rem;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+/* Ingredient name cell */
+.fc-cell-name {
+  color: var(--color-text-title);
+  font-weight: 500;
+}
+
+.fc-name-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fc-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.fc-claim-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(197, 160, 89, 0.12);
+  color: var(--color-gold);
+  border: 1px solid rgba(197, 160, 89, 0.25);
+}
+
+.fc-claim-chip.is-full {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--color-success);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.fc-progress {
+  width: 160px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.fc-progress-fill {
+  height: 100%;
+  background: var(--color-gold);
+  border-radius: 2px;
+}
+
+/* Stock cell */
+.fc-cell-stock {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.fc-stock-muted {
+  color: var(--color-text-muted);
+}
+
+.fc-stock-sep {
+  color: rgba(197, 160, 89, 0.35);
+  margin: 0 0.15rem;
+}
+
+.fc-stock-target {
+  color: var(--color-text-title);
+}
+
+/* Needed cell */
+.fc-needed-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.fc-cell-needed.is-warning .fc-needed-value {
+  color: var(--color-warning);
+}
+
+.fc-cell-needed.is-success .fc-needed-value {
+  color: var(--color-success);
+}
+
+/* Price / total cells */
+.fc-price-value {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+}
+
+.fc-total-none {
+  color: var(--color-text-muted);
+}
+
+.fc-total-price {
+  font-size: 0.88rem;
+}
+
+.fc-total-amount {
+  color: var(--color-gold-light);
+}
+
+.fc-coin-sm {
+  width: 13px;
+  height: 13px;
+  font-size: 8px;
+}
+
+.fc-coin-md {
+  width: 15px;
+  height: 15px;
+  font-size: 9px;
+}
+
+/* Footer totals row */
+.fc-tfoot-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(4, minmax(0, 1fr));
+  border-top: 1px solid rgba(197, 160, 89, 0.2);
+  background: rgba(197, 160, 89, 0.04);
+}
+
+.fc-tfoot-label {
+  grid-column: 1 / 5;
+  padding: 0.75rem 1rem;
+  text-align: right;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-gold-light);
+  font-weight: 600;
+}
+
+.fc-tfoot-total {
+  padding: 0.75rem 1rem;
+  text-align: right;
+}
+
+.fc-tfoot-price {
+  font-size: 1rem;
+}
+
+.fc-tfoot-amount {
+  color: var(--color-gold-light);
+  font-weight: 700;
+}
+
+/* Footer note */
+.fc-footer-note {
+  padding: 0.6rem 1.25rem;
+  border-top: 1px solid rgba(197, 160, 89, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+/* Mobile-only sort controls */
+.fc-mobile-sort {
+  display: none;
+}
+
+/* Sort indicators */
+.fc-sort-idle {
+  opacity: 0.3;
+  margin-left: 0.25rem;
+}
+
+.fc-sort-active {
+  color: var(--color-gold);
+  margin-left: 0.25rem;
+}
+
+/* ─── Responsive: tablet & below ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .fc-notice {
+    padding: 0.75rem 0.9rem;
+  }
+
+  .fc-cta {
+    padding: 1rem 1.1rem;
+  }
+
+  .fc-toolbar {
+    padding: 0.75rem 1rem;
+  }
+
+  .fc-filter-btn {
+    flex: 1;
+    min-height: 38px;
+  }
+
+  .fc-toolbar-meta {
+    flex-basis: 100%;
+  }
+
+  /* Mobile sort control */
+  .fc-mobile-sort {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-basis: 100%;
+  }
+
+  .fc-sort-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+  }
+
+  .fc-sort-select {
+    flex: 1;
+    min-height: 38px;
+    font-size: 16px;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .fc-sort-dir-btn {
+    min-height: 38px;
+    min-width: 44px;
+    padding: 0 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  /* Table → stacked cards */
+  .fc-thead-row {
+    display: none;
+  }
+
+  .fc-body-row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'name name'
+      'stock needed'
+      'price total';
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    align-items: stretch;
+  }
+
+  .fc-body-row:hover {
+    background: transparent;
+  }
+
+  .fc-cell {
+    padding: 0;
+  }
+
+  .fc-cell-name {
+    grid-area: name;
+    padding-bottom: 0.15rem;
+  }
+
+  /* Stat tiles: each metric in its own visually separated box */
+  .fc-cell.fc-cell-stock,
+  .fc-cell.fc-cell-needed,
+  .fc-cell.fc-cell-price,
+  .fc-cell.fc-cell-total {
+    grid-area: auto;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(197, 160, 89, 0.12);
+    border-radius: 4px;
+    padding: 0.45rem 0.65rem;
+    text-align: left;
+  }
+
+  .fc-cell.fc-cell-stock {
+    grid-area: stock;
+  }
+
+  .fc-cell.fc-cell-needed {
+    grid-area: needed;
+  }
+
+  .fc-cell.fc-cell-price {
+    grid-area: price;
+  }
+
+  .fc-cell.fc-cell-total {
+    grid-area: total;
+  }
+
+  .fc-stat-label {
+    display: block;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.15rem;
+  }
+
+  .fc-cell-total .gil-price {
+    justify-content: flex-start;
+  }
+
+  .fc-progress {
+    width: 120px;
+  }
+
+  .fc-tfoot-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+  }
+
+  .fc-tfoot-label,
+  .fc-tfoot-total {
+    padding: 0;
+  }
+
+  .fc-footer-note {
+    padding: 0.6rem 1rem;
+  }
+
+  .fc-refresh-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ─── Responsive: small phones ─────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .fc-header-title {
+    font-size: 1.2rem;
+  }
+
+  .fc-empty {
+    padding: 2rem 1rem;
+  }
+
+  .fc-loading {
+    min-height: 220px;
+  }
+}

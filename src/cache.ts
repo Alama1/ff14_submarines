@@ -41,12 +41,12 @@ export function clearCache(key: string): void {
 
 // ─── Cache keys & TTLs ────────────────────────────────────────────────────────
 
-export const RECIPES_TTL = 5 * 60 * 1000;
-export const DISCOUNTS_TTL = 5 * 60 * 1000;
-export const MISSING_TTL = 3 * 60 * 1000;
-export const PRICES_TTL = 5 * 60 * 1000;
-export const PRICE_SETTINGS_TTL = 30 * 60 * 1000;
-export const IN_PROGRESS_TTL = 60 * 1000;
+export const RECIPES_TTL = 20 * 1000;
+export const DISCOUNTS_TTL = 20 * 1000;
+export const MISSING_TTL = 20 * 1000;
+export const PRICES_TTL = 20 * 1000;
+export const PRICE_SETTINGS_TTL = 20 * 1000;
+export const IN_PROGRESS_TTL = 20 * 1000;
 
 export const CACHE_KEY_RECIPES = 'ff14_cache_recipes';
 export const CACHE_KEY_DISCOUNTS = 'ff14_cache_discounts';

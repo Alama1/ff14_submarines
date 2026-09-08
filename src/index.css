@@ -495,9 +495,148 @@ input[type="checkbox"]:checked + .toggle-switch::after {
   animation: pulseGlow 2s infinite ease-in-out;
 }
 
-/* Order Tracker responsive two-column grid */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ═══ Responsive: tablet & below ═══ */
 @media (max-width: 768px) {
-  .order-tracker-grid {
-    grid-template-columns: 1fr !important;
+  :root {
+    /* background-attachment: fixed is janky / ignored on iOS */
+    background-attachment: scroll;
+  }
+
+  .app-container {
+    padding: 1.25rem 1rem;
+  }
+
+  .app-header {
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.25rem;
+  }
+
+  .app-title {
+    font-size: 1.75rem;
+  }
+
+  .app-subtitle {
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+  }
+
+  .tab-navigation {
+    gap: 0.5rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .tab-btn {
+    flex: 1 1 0;
+    padding: 0.7rem 0.4rem;
+    font-size: 0.8rem;
+    min-height: 44px;
+    letter-spacing: 0.04em;
+  }
+
+  .tab-btn:active {
+    background: rgba(25, 33, 49, 0.8);
+    color: var(--color-text-title);
+  }
+
+  .tab-btn-icon {
+    margin-right: 0.3rem;
+  }
+
+  /* 16px+ input font prevents iOS Safari from zooming on focus */
+  .form-input,
+  .form-select,
+  .form-label {
+    font-size: 16px;
+  }
+
+  .form-label {
+    font-size: 0.8rem;
+  }
+
+  .ff-card,
+  .ff-card-framed {
+    padding: 1.1rem;
+  }
+
+  .ff-btn,
+  .ff-btn-secondary,
+  .ff-btn-danger {
+    min-height: 44px;
+  }
+
+  .ps-omit-btn,
+  .sb-tab-btn {
+    min-height: 44px;
+  }
+}
+
+/* ═══ Responsive: small phones ═══ */
+@media (max-width: 480px) {
+  .app-container {
+    padding: 1rem 0.75rem;
+  }
+
+  .app-title {
+    font-size: 1.45rem;
+  }
+
+  .app-title-container {
+    gap: 0.35rem;
+  }
+
+  .app-subtitle {
+    font-size: 0.72rem;
+  }
+
+  .tab-btn {
+    font-size: 0.72rem;
+    padding: 0.65rem 0.25rem;
+  }
+
+  .tab-btn-icon {
+    display: none;
+  }
+
+  .ff-card,
+  .ff-card-framed {
+    padding: 1rem;
+  }
+}
+
+/* ═══ Touch feedback (hover doesn't exist on touch screens) ═══ */
+@media (hover: none) {
+  .ff-btn:active {
+    filter: brightness(1.1);
+  }
+
+  .ff-btn-secondary:active,
+  .ff-btn-danger:active {
+    filter: brightness(1.3);
+  }
+
+  .sb-tab-btn:active {
+    color: var(--color-gold-light);
+  }
+}
+
+/* ═══ Motion preferences ═══ */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in,
+  .glow-active,
+  .spin {
+    animation: none;
+  }
+
+  * {
+    transition-duration: 0.01ms !important;
   }
 }

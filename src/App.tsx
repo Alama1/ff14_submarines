@@ -48,11 +48,8 @@ function App() {
     <div className="app-container">
       <header className="app-header">
         <div className="app-title-container">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Anchor
-              size={36}
-              style={{ color: 'var(--color-gold)', filter: 'drop-shadow(0 0 8px var(--color-gold-glow))' }}
-            />
+          <div className="app-brand-row">
+            <Anchor size={36} className="app-brand-icon" />
             <h1 className="app-title">Alamai Submarines</h1>
           </div>
           <span className="app-subtitle">Best Submarine parts in Eorzea</span>
@@ -65,7 +62,7 @@ function App() {
           className={`tab-btn ${activeTab === 'builder' ? 'active' : ''}`}
           onClick={() => setActiveTab('builder')}
         >
-          <Hammer size={14} style={{ marginRight: '0.4rem', verticalAlign: 'middle' }} />
+          <Hammer size={14} className="tab-btn-icon" />
           Set Builder
         </button>
         <button
@@ -73,7 +70,7 @@ function App() {
           className={`tab-btn ${activeTab === 'orders' ? 'active' : ''}`}
           onClick={() => setActiveTab('orders')}
         >
-          <Ship size={14} style={{ marginRight: '0.4rem', verticalAlign: 'middle' }} />
+          <Ship size={14} className="tab-btn-icon" />
           Orders
         </button>
         <button
@@ -81,60 +78,28 @@ function App() {
           className={`tab-btn ${activeTab === 'crafters' ? 'active' : ''}`}
           onClick={() => setActiveTab('crafters')}
         >
-          <Wrench size={14} style={{ marginRight: '0.4rem', verticalAlign: 'middle' }} />
+          <Wrench size={14} className="tab-btn-icon" />
           For crafters
         </button>
       </nav>
 
-      <main style={{ flex: 1, marginBottom: '3rem' }}>
+      <main className="app-main">
         {catalog.loading ? (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '300px',
-              gap: '1rem',
-            }}
-          >
-            <RefreshCw size={36} className="spin" style={{ color: 'var(--color-gold)' }} />
-            <p
-              style={{
-                fontStyle: 'italic',
-                color: 'var(--color-text-muted)',
-                fontFamily: 'var(--font-title)',
-                letterSpacing: '0.05em',
-              }}
-            >
-              Loading Eorzean Stock Records...
-            </p>
+          <div className="app-loading">
+            <RefreshCw size={36} className="spin app-loading-icon" />
+            <p className="app-loading-text">Loading Eorzean Stock Records...</p>
           </div>
         ) : catalog.error ? (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '300px',
-              gap: '1rem',
-            }}
-          >
-            <p
-              style={{
-                color: 'var(--color-error)',
-                fontFamily: 'var(--font-title)',
-                letterSpacing: '0.05em',
-                fontSize: '1.05rem',
+          <div className="app-error">
+            <p className="app-error-title">⚓ Failed to reach the harbor</p>
+            <p className="app-error-detail">{catalog.error}</p>
+            <button
+              type="button"
+              className="ff-btn"
+              onClick={() => {
+                catalog.refresh();
               }}
             >
-              ⚓ Failed to reach the harbor
-            </p>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.88rem', maxWidth: '440px', textAlign: 'center' }}>
-              {catalog.error}
-            </p>
-            <button type="button" className="ff-btn" onClick={catalog.refresh}>
               <RefreshCw size={14} /> Try Again
             </button>
           </div>
@@ -155,19 +120,11 @@ function App() {
         )}
       </main>
 
-      <footer
-        style={{
-          textAlign: 'center',
-          paddingTop: '2rem',
-          borderTop: '1px solid rgba(255, 255, 255, 0.05)',
-          color: 'var(--color-text-muted)',
-          fontSize: '0.75rem',
-        }}
-      >
-        <p style={{ marginBottom: '0.5rem' }}>
+      <footer className="app-footer">
+        <p className="app-footer-tagline">
           Alamai Submarines — Best Submarine parts in Eorzea. Created with dedication to details.
         </p>
-        <p style={{ opacity: 0.6 }}>
+        <p className="app-footer-legal">
           FINAL FANTASY XIV © 2010 - 2026 SQUARE ENIX CO., LTD. All Rights Reserved. We are not
           affiliated with Square Enix.
         </p>
