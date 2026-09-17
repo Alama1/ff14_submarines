@@ -9,9 +9,11 @@ import {
   Clock,
   Zap,
   CheckCircle,
+  Calculator,
 } from 'lucide-react';
 import { fetchMissingMaterials, fetchPrices, fetchPriceSettings } from '../api/endpoints';
 import { ApiMissingMaterial, ApiPriceEntry, ApiPriceSettings } from '../api/types';
+import MaterialsCalculator, { CalculatorItem } from './MaterialsCalculator';
 import './ForCrafters.css';
 
 function formatGil(n: number): string {
@@ -55,6 +57,7 @@ export default function ForCrafters() {
   const [filter, setFilter] = useState<'all' | 'needs_crafting'>('all');
   const [sortField, setSortField] = useState<SortField>('remaining');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [showCalculator, setShowCalculator] = useState(false);
 
   const fetchData = useCallback(async (bypassCache = false) => {
     setLoading(true);
@@ -155,6 +158,18 @@ export default function ForCrafters() {
   const filteredGrandTotal = sortedItems.reduce((s, i) => s + i.totalPrice, 0);
   const fullyClaimedCount = rows.filter((r) => r.remaining <= 0).length;
 
+  // Feed for the payout calculator — every known material with its live price
+  const calculatorItems = useMemo<CalculatorItem[]>(
+    () =>
+      rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        unitPrice: r.pricePerUnit,
+        remaining: Math.max(0, r.remaining),
+      })),
+    [rows]
+  );
+
   return (
     <div className="fade-in fc-page">
       {/* Header */}
@@ -174,15 +189,25 @@ export default function ForCrafters() {
             )}
           </p>
         </div>
-        <button
-          type="button"
-          className="ff-btn-secondary fc-refresh-btn"
-          onClick={() => fetchData(true)}
-          disabled={loading}
-        >
-          <RefreshCw size={14} className={loading ? 'spin' : ''} />
-          {loading ? 'Loading…' : 'Refresh'}
-        </button>
+        <div className="fc-header-actions">
+          <button
+            type="button"
+            className={`ff-btn fc-calc-btn glow-active ${showCalculator ? 'is-open' : ''}`}
+            onClick={() => setShowCalculator((v) => !v)}
+          >
+            <Calculator size={14} />
+            {showCalculator ? 'Hide Calculator' : 'Calculate Payout'}
+          </button>
+          <button
+            type="button"
+            className="ff-btn-secondary fc-refresh-btn"
+            onClick={() => fetchData(true)}
+            disabled={loading}
+          >
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            {loading ? 'Loading…' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {/* Update cadence notice */}
@@ -234,6 +259,10 @@ export default function ForCrafters() {
           </div>
         </div>
       </div>
+
+      {showCalculator && (
+        <MaterialsCalculator items={calculatorItems} onClose={() => setShowCalculator(false)} />
+      )}
 
       {error && (
         <div className="ff-alert ff-alert-warning fc-alert">

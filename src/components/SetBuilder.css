@@ -707,19 +707,72 @@
   line-height: 1.5;
 }
 
-.sb-craft-banner-count {
-  font-size: 0.78rem;
+/* Missing-material chips inside the availability banner */
+.sb-shortfall-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.sb-shortfall-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: var(--color-text-main);
+  white-space: nowrap;
+}
+
+.sb-shortfall-chip strong {
+  color: #f87171;
+  font-variant-numeric: tabular-nums;
+}
+
+.sb-shortfall-toggle {
+  background: none;
+  border: 1px dashed rgba(197, 160, 89, 0.35);
+  border-radius: 3px;
+  color: var(--color-gold);
+  font-size: 0.72rem;
+  padding: 0.18rem 0.55rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sb-shortfall-toggle:hover {
+  border-color: var(--color-gold);
+  background: rgba(197, 160, 89, 0.08);
+}
+
+/* Quick stats row */
+.sb-craft-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.45rem;
+}
+
+.sb-craft-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sb-craft-stat svg {
   color: var(--color-success);
-  margin-top: 0.25rem;
+  flex-shrink: 0;
 }
 
-.sb-craft-banner.is-warning .sb-craft-banner-count {
-  color: var(--color-gold-light);
-}
-
-.sb-craft-banner-count svg {
-  margin-right: 4px;
-  vertical-align: middle;
+.sb-craft-stat.is-success svg {
+  color: var(--color-gold);
 }
 
 /* ─── Summary card ─────────────────────────────────────────────────────────── */
@@ -990,36 +1043,6 @@
 
 .sb-discount-chip-active {
   font-size: 0.65rem;
-}
-
-/* Stock alerts */
-.sb-alert {
-  text-align: left;
-  margin: 0;
-}
-
-.sb-alert svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.sb-alert-title {
-  display: block;
-  margin-bottom: 0.15rem;
-}
-
-.sb-alert-text {
-  font-size: 0.8rem;
-}
-
-.sb-alert-instock {
-  background: rgba(16, 185, 129, 0.05);
-  color: var(--color-success);
-  border-color: rgba(16, 185, 129, 0.2);
-}
-
-.sb-alert-instock .sb-alert-text {
-  color: var(--color-text-main);
 }
 
 /* Actions / footnote */

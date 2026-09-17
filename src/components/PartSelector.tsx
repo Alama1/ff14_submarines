@@ -78,6 +78,17 @@ export default function PartSelector({
   const linePrice = selectedPart ? selectedPart.price * quantity : 0;
   const craftable = craftability.craftable;
   const totalAvailable = physicalStock + craftable;
+  const canCraftRest =
+    craftability.hasRecipe && craftable >= quantity - physicalStock && quantity > physicalStock;
+  const partiallyAvailable =
+    quantity > physicalStock &&
+    totalAvailable > 0 &&
+    totalAvailable < quantity;
+  const shortageTooltip = craftability.bottlenecks.length
+    ? `Missing for ${formatNumber(quantity)}×: ${craftability.bottlenecks
+        .map((b) => `${b.name} (${formatNumber(b.missing)} more)`)
+        .join(', ')}`
+    : undefined;
 
   return (
     <div className="ff-card-framed fade-in ps-card">
@@ -139,16 +150,22 @@ export default function PartSelector({
               {physicalStock > 0 && (
                 <span className="badge badge-success ps-badge">Ready ({physicalStock})</span>
               )}
-              {craftability.hasRecipe && craftable > 0 && craftable >= quantity && (
-                <span className="badge ps-badge ps-badge-craft">
+              {canCraftRest && (
+                <span
+                  className="badge ps-badge ps-badge-craft"
+                  title={`Materials in stock to craft ${formatNumber(craftable)} more of this part`}
+                >
                   <Hammer size={8} />
-                  Can craft ({formatNumber(craftable)})
+                  Craftable immediately
                 </span>
               )}
-              {craftability.hasRecipe && craftable > 0 && craftable < quantity && (
-                <span className="badge ps-badge ps-badge-partial">
+              {partiallyAvailable && (
+                <span
+                  className="badge ps-badge ps-badge-partial"
+                  title={shortageTooltip ?? undefined}
+                >
                   <Hammer size={8} />
-                  {formatNumber(totalAvailable)}/{formatNumber(quantity)} available
+                  {formatNumber(totalAvailable)}/{formatNumber(quantity)} ready now
                 </span>
               )}
               {totalAvailable === 0 && (

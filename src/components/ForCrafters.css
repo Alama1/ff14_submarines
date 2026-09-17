@@ -34,6 +34,26 @@
   color: var(--color-gold);
 }
 
+.fc-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.fc-calc-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+.fc-calc-btn.is-open {
+  animation: none;
+  background: linear-gradient(180deg, var(--color-gold-dark) 0%, #6b531f 100%);
+}
+
 .fc-refresh-btn {
   display: flex;
   align-items: center;
@@ -687,6 +707,11 @@
   }
 
   .fc-refresh-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .fc-calc-btn {
     width: 100%;
     justify-content: center;
   }

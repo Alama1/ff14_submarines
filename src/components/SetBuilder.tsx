@@ -6,7 +6,6 @@ import {
   Plus,
   Minus,
   Tag,
-  Info,
   Check,
   Send,
   RefreshCw,
@@ -20,8 +19,8 @@ import { useCatalog } from '../hooks/useCatalog';
 import {
   computeAvailableMaterials,
   computeCommittedMaterials,
+  computeOrderAvailability,
   computePartCraftable,
-  computeSetCraftable,
 } from '../utils/stockCalc';
 import { submitOrder } from '../api/endpoints';
 import { ApiError } from '../api/client';
@@ -416,7 +415,7 @@ function OrderSuccessView({ order, onTrack, onNewOrder }: OrderSuccessViewProps)
 // ─── Main SetBuilder ──────────────────────────────────────────────────────────
 
 export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
-  const { parts, partsById, discounts, inProgress } = catalog;
+  const { parts, partsById, discounts, inProgress, missing } = catalog;
 
   const [builds, setBuilds] = useState<SubmarineBuild[]>(() =>
     parts.length > 0 ? [createDefaultBuild('1', 'Build 1', parts)] : []
@@ -425,12 +424,15 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
 
   const [showSubmitForm, setShowSubmitForm] = useState(false);
   const [submittedOrder, setSubmittedOrder] = useState<SubmittedOrder | null>(null);
+  const [showAllShortfalls, setShowAllShortfalls] = useState(false);
 
-  // Live availability: inventory stock minus materials committed to in-progress orders
+  // Live availability: inventory stock (/missing feed) minus materials
+  // committed to in-progress orders
   const availableMaterials = useMemo(() => {
     const committed = computeCommittedMaterials(inProgress, partsById);
-    return computeAvailableMaterials(parts, committed);
-  }, [parts, partsById, inProgress]);
+    const stockFromMissing = Object.fromEntries(missing.map((m) => [m.id, m.currentStock]));
+    return computeAvailableMaterials(parts, committed, stockFromMissing);
+  }, [parts, partsById, inProgress, missing]);
 
   const activeBuild =
     builds.find((b) => b.id === activeBuildId) ?? builds[0] ?? createDefaultBuild('temp', 'Temp', parts);
@@ -597,43 +599,34 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
   const partCraftability = useMemo(() => {
     const map: Partial<Record<PartType, ReturnType<typeof computePartCraftable>>> = {};
     PART_TYPES.forEach((type) => {
-      map[type] = computePartCraftable(selections[type], availableMaterials);
+      map[type] = computePartCraftable(
+        selections[type],
+        availableMaterials,
+        quantities[type]
+      );
     });
     return map;
-  }, [selections, availableMaterials]);
-
-  const setCraftableCount = useMemo(() => {
-    const selected = PART_TYPES.map((type) => selections[type]).filter(
-      (p): p is ApiSubmarinePart => p !== null && quantities[p.partType as PartType] > 0
-    );
-    return computeSetCraftable(selected, availableMaterials);
   }, [selections, quantities, availableMaterials]);
 
-  const insufficientParts = useMemo(() => {
-    const list: { partName: string; requested: number; available: number }[] = [];
+  // ── Whole-order availability vs. current material stock ─────────────────────
+  // Aggregates every part at its requested quantity across ALL builds, then
+  // checks the combined demand against the materials we physically have.
+  const orderAvailability = useMemo(() => {
+    const requests: { part: ApiSubmarinePart; quantity: number }[] = [];
     builds.forEach((b) => {
       ALL_PART_TYPES.forEach((type) => {
+        if (type === 'Materials') return;
         const part = b.selections[type];
         const qty = b.quantities[type];
-        if (!part || qty <= 0) return;
-        const craftable = computePartCraftable(part, availableMaterials).craftable;
-        const totalAvail = part.stock + craftable;
-        if (totalAvail < qty) {
-          list.push({ partName: part.name, requested: qty, available: totalAvail });
-        }
+        if (part && qty > 0) requests.push({ part, quantity: qty });
       });
     });
-    return list;
+    return computeOrderAvailability(requests, availableMaterials);
   }, [builds, availableMaterials]);
 
-  const hasInsufficientParts = insufficientParts.length > 0;
-
-  const hasOutOfStock = builds.some((b) =>
-    ALL_PART_TYPES.some((type) => {
-      const part = b.selections[type];
-      return part && part.stock < b.quantities[type] && b.quantities[type] > 0;
-    })
-  );
+  const allInFinishedStock =
+    orderAvailability.totalUnits > 0 &&
+    orderAvailability.readyUnits >= orderAvailability.totalUnits;
 
   const anySelected = builds.some(
     (b) =>
@@ -847,44 +840,92 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
           })()}
 
           {/* ── Crafting Stock Availability Banner ── */}
-          {anySelected && (
-            <div className={`ff-alert sb-craft-banner ${hasInsufficientParts ? 'is-warning' : ''}`}>
-              {hasInsufficientParts ? (
-                <>
-                  <Info size={18} className="sb-craft-banner-icon" />
-                  <div className="sb-craft-banner-body">
-                    <strong className="sb-craft-banner-title">Custom Crafting Notice</strong>
-                    <span className="sb-craft-banner-text">
-                      Some of the parts that you selected can't be crafted instantly, so it may take a
-                      bit longer to fulfill. Everything else looks fine!
-                    </span>
-                    {setCraftableCount.hasRecipe && setCraftableCount.craftable > 0 && (
-                      <span className="sb-craft-banner-count">
-                        <Hammer size={10} />
-                        Enough ingredients to craft <strong>{formatNumber(setCraftableCount.craftable)}</strong>{' '}
-                        complete {setCraftableCount.craftable === 1 ? 'set' : 'sets'}
-                      </span>
-                    )}
-                  </div>
-                </>
+          {anySelected && orderAvailability.totalUnits > 0 && (
+            <div
+              className={`ff-alert sb-craft-banner ${
+                orderAvailability.complete ? '' : 'is-warning'
+              }`}
+            >
+              {orderAvailability.complete ? (
+                <Check size={18} className="sb-craft-banner-icon" />
               ) : (
-                <>
-                  <Check size={18} className="sb-craft-banner-icon" />
-                  <div className="sb-craft-banner-body">
+                <AlertCircle size={18} className="sb-craft-banner-icon" />
+              )}
+              <div className="sb-craft-banner-body">
+                {allInFinishedStock ? (
+                  <>
+                    <strong className="sb-craft-banner-title">Ready for Immediate Delivery</strong>
+                    <span className="sb-craft-banner-text">
+                      All {formatNumber(orderAvailability.totalUnits)} requested part
+                      {orderAvailability.totalUnits !== 1 ? 's' : ''} are in finished stock —
+                      nothing needs to be crafted, your order can ship right away.
+                    </span>
+                  </>
+                ) : orderAvailability.complete ? (
+                  <>
                     <strong className="sb-craft-banner-title">All Materials Available</strong>
                     <span className="sb-craft-banner-text">
-                      All materials for your craft are in-stock, so craft will be quick!
+                      {formatNumber(orderAvailability.readyUnits)} of{' '}
+                      {formatNumber(orderAvailability.totalUnits)} parts are ready from finished
+                      stock, and the rest can be crafted right away — no ingredients are missing.
                     </span>
-                    {setCraftableCount.hasRecipe && setCraftableCount.craftable > 0 && (
-                      <span className="sb-craft-banner-count">
-                        <Hammer size={10} />
-                        Enough ingredients to craft <strong>{formatNumber(setCraftableCount.craftable)}</strong>{' '}
-                        complete {setCraftableCount.craftable === 1 ? 'set' : 'sets'}
-                      </span>
-                    )}
-                  </div>
-                </>
-              )}
+                  </>
+                ) : (
+                  <>
+                    <strong className="sb-craft-banner-title">
+                      Short on {formatNumber(orderAvailability.shortfalls.length)} material
+                      {orderAvailability.shortfalls.length !== 1 ? 's' : ''}
+                    </strong>
+                    <span className="sb-craft-banner-text">
+                      Current materials cover about {formatNumber(orderAvailability.coveredUnits)}{' '}
+                      of {formatNumber(orderAvailability.totalUnits)} ordered parts (
+                      {orderAvailability.coveragePct}%). You can still send the order — the
+                      positions below just need to be sourced or crafted first, so those parts may
+                      take a little longer.
+                    </span>
+                    <div className="sb-shortfall-list">
+                      {(showAllShortfalls
+                        ? orderAvailability.shortfalls
+                        : orderAvailability.shortfalls.slice(0, 5)
+                      ).map((s) => (
+                        <span
+                          key={s.name}
+                          className="sb-shortfall-chip"
+                          title={`Need ${formatNumber(s.needed)}, have ${formatNumber(s.available)}`}
+                        >
+                          {s.name}
+                          <strong>−{formatNumber(s.missing)}</strong>
+                        </span>
+                      ))}
+                      {orderAvailability.shortfalls.length > 5 && (
+                        <button
+                          type="button"
+                          className="sb-shortfall-toggle"
+                          onClick={() => setShowAllShortfalls((v) => !v)}
+                        >
+                          {showAllShortfalls
+                            ? 'Show less'
+                            : `+${orderAvailability.shortfalls.length - 5} more`}
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+                <div className="sb-craft-stats">
+                  <span className="sb-craft-stat">
+                    <Check size={11} />
+                    {formatNumber(orderAvailability.readyUnits)}/
+                    {formatNumber(orderAvailability.totalUnits)} parts in finished stock
+                  </span>
+                  {orderAvailability.complete && orderAvailability.surplusUnits > 0 && (
+                    <span className="sb-craft-stat is-success">
+                      <Hammer size={11} />
+                      Spare materials for ~{formatNumber(orderAvailability.surplusUnits)} more
+                      parts
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1001,33 +1042,6 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
                       </div>
                     );
                   })}
-                </div>
-              </div>
-            )}
-
-            {hasOutOfStock && (
-              <div className="ff-alert ff-alert-warning sb-alert">
-                <Info size={16} />
-                <div>
-                  <strong className="sb-alert-title">Includes Custom-Crafted Parts</strong>
-                  <span className="sb-alert-text">
-                    One or more selected parts are currently out of stock. These will be
-                    custom-crafted for you. Delivery may take 1-7 days depending on material
-                    availability and current load.
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {!hasOutOfStock && anySelected && (
-              <div className="ff-alert ff-alert-info sb-alert sb-alert-instock">
-                <Check size={16} />
-                <div>
-                  <strong className="sb-alert-title">All Selected Components In Stock</strong>
-                  <span className="sb-alert-text">
-                    Excellent selection! All selected parts are currently in inventory. Ready for
-                    immediate delivery.
-                  </span>
                 </div>
               </div>
             )}
