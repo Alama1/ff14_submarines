@@ -47,6 +47,12 @@ export interface ApiDiscount {
   discountPercent: string;
 }
 
+export interface ApiCrafterDiscount {
+  id: string;
+  threshold: number;
+  discountPercent: string;
+}
+
 export type OrderStatus =
   | 'pending'
   | 'confirmed'

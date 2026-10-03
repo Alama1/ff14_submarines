@@ -8,10 +8,12 @@ import {
   Plus,
   Search,
   Sparkles,
+  Tag,
   Trash2,
   X,
 } from 'lucide-react';
 import { formatNumber } from '../utils/format';
+import type { ApiCrafterDiscount } from '../api/types';
 import './MaterialsCalculator.css';
 
 export interface CalculatorItem {
@@ -69,9 +71,12 @@ function highlight(name: string, query: string) {
 
 export default function MaterialsCalculator({
   items,
+  bonusTiers = [],
   onClose,
 }: {
   items: CalculatorItem[];
+  /** Bulk bonus tiers from the backend — supplying more items yields a higher payout. */
+  bonusTiers?: ApiCrafterDiscount[];
   onClose: () => void;
 }) {
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -165,7 +170,18 @@ export default function MaterialsCalculator({
   );
   const unpricedCount = priced.filter(({ item }) => !item.unitPrice).length;
   const totalUnits = entries.reduce((s, e) => s + e.qty, 0);
-  const animatedTotal = useCountUp(totalPayout);
+
+  // Backend config: highest tier whose threshold <= total item count — bulk supply pays more
+  const activeBonus = useMemo(() => {
+    const sorted = [...bonusTiers].sort((a, b) => b.threshold - a.threshold);
+    const matching = sorted.find((d) => totalUnits >= d.threshold);
+    if (!matching) return null;
+    return { threshold: matching.threshold, bonusPercent: Number(matching.discountPercent) || 0 };
+  }, [bonusTiers, totalUnits]);
+  const bonusPct = activeBonus?.bonusPercent ?? 0;
+  const bonusAmount = Math.round(totalPayout * (bonusPct / 100));
+  const finalPayout = totalPayout + bonusAmount;
+  const animatedTotal = useCountUp(finalPayout);
 
   const handleCopy = () => {
     if (priced.length === 0) return;
@@ -178,7 +194,13 @@ export default function MaterialsCalculator({
     const text = [
       'Materials offer:',
       ...lines,
-      `Total: ${formatNumber(totalPayout)} G`,
+      ...(activeBonus
+        ? [
+            `Subtotal: ${formatNumber(totalPayout)} G`,
+            `Bulk bonus (${bonusPct}%): +${formatNumber(bonusAmount)} G`,
+          ]
+        : []),
+      `Total: ${formatNumber(finalPayout)} G`,
     ].join('\n');
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
@@ -435,16 +457,33 @@ export default function MaterialsCalculator({
       {entries.length > 0 && (
         <div className="mc-footer fade-in">
           <div className="mc-footer-total">
+            {activeBonus && (
+              <div className="mc-bonus-breakdown">
+                <div className="mc-bonus-row">
+                  <span className="mc-bonus-row-label">Subtotal</span>
+                  <span className="mc-bonus-row-value">
+                    {formatNumber(totalPayout)} G
+                  </span>
+                </div>
+                <div className="mc-bonus-row is-bonus">
+                  <span className="mc-bonus-row-label">
+                    <Tag size={11} /> Bulk Bonus ({bonusPct}%)
+                  </span>
+                  <span className="mc-bonus-row-value">+{formatNumber(bonusAmount)} G</span>
+                </div>
+              </div>
+            )}
             <span className="mc-footer-label">
               {unpricedCount > 0 ? 'Estimated payout' : 'Your payout'}
             </span>
-            <div className="gil-price mc-footer-amount" key={totalPayout}>
+            <div className="gil-price mc-footer-amount" key={finalPayout}>
               <span>{formatNumber(animatedTotal)}</span>
               <span className="gil-coin mc-coin-lg">G</span>
             </div>
             <span className="mc-footer-meta">
               {formatNumber(entries.length)} material{entries.length !== 1 ? 's' : ''} ·{' '}
               {formatNumber(totalUnits)} unit{totalUnits !== 1 ? 's' : ''}
+              {activeBonus && ` · includes +${bonusPct}% bulk bonus`}
               {unpricedCount > 0 &&
                 ` · ${unpricedCount} without price — final total confirmed by @Alamai`}
             </span>
@@ -467,6 +506,35 @@ export default function MaterialsCalculator({
               <Trash2 size={14} />
               Clear
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk bonus guide */}
+      {bonusTiers.length > 0 && (
+        <div className="mc-bonus-guide">
+          <div className="mc-bonus-guide-head">
+            <div className="mc-bonus-guide-title">
+              <Tag size={12} /> Bulk Bonus Guide
+            </div>
+            <span className="mc-bonus-guide-count">
+              Current Items Count: <strong>{formatNumber(totalUnits)}</strong>
+            </span>
+          </div>
+          <div className="mc-bonus-list">
+            {bonusTiers.map((d) => {
+              const isCurrent = activeBonus?.threshold === d.threshold;
+              return (
+                <div
+                  key={d.id}
+                  className={`mc-bonus-chip ${isCurrent ? 'is-current' : ''}`}
+                >
+                  <span>{formatNumber(d.threshold)}+ Items:</span>
+                  <span className="mc-bonus-chip-pct">+{Number(d.discountPercent)}% Bonus</span>
+                  {isCurrent && <span className="mc-bonus-chip-active">★ Active</span>}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

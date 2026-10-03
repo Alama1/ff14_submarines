@@ -551,6 +551,118 @@
   color: var(--color-text-muted);
 }
 
+/* ─── Bulk bonus breakdown & guide ─────────────────────────────────────────── */
+.mc-bonus-breakdown {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.mc-bonus-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mc-bonus-row.is-bonus {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.mc-bonus-row-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.mc-bonus-row-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.mc-bonus-guide {
+  background: rgba(197, 160, 89, 0.02);
+  border: 1px solid rgba(197, 160, 89, 0.1);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mc-bonus-guide-head {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-gold-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mc-bonus-guide-title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.mc-bonus-guide-count {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.mc-bonus-guide-count strong {
+  color: var(--color-gold);
+  font-size: 0.8rem;
+}
+
+.mc-bonus-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0.72rem;
+}
+
+.mc-bonus-chip {
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--color-text-muted);
+  font-weight: normal;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.mc-bonus-chip.is-current {
+  background: var(--color-success-bg);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: var(--color-success);
+  font-weight: bold;
+}
+
+.mc-bonus-chip-pct {
+  color: var(--color-text-title);
+}
+
+.mc-bonus-chip.is-current .mc-bonus-chip-pct {
+  color: var(--color-success);
+}
+
+.mc-bonus-chip-active {
+  font-size: 0.65rem;
+}
+
 .mc-footer-actions {
   display: flex;
   gap: 0.6rem;

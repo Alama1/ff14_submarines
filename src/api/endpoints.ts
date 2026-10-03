@@ -1,5 +1,6 @@
 import { apiGet, apiPost } from './client';
 import {
+  ApiCrafterDiscount,
   ApiDiscount,
   ApiMissingMaterial,
   ApiOrder,
@@ -14,12 +15,14 @@ import {
   setCache,
   CACHE_KEY_RECIPES,
   CACHE_KEY_DISCOUNTS,
+  CACHE_KEY_CRAFTER_DISCOUNTS,
   CACHE_KEY_MISSING,
   CACHE_KEY_PRICES,
   CACHE_KEY_PRICE_SETTINGS,
   CACHE_KEY_IN_PROGRESS,
   RECIPES_TTL,
   DISCOUNTS_TTL,
+  CRAFTER_DISCOUNTS_TTL,
   MISSING_TTL,
   PRICES_TTL,
   PRICE_SETTINGS_TTL,
@@ -47,6 +50,18 @@ export async function fetchDiscounts(bypassCache = false): Promise<ApiDiscount[]
   }
   const discounts = await apiGet<ApiDiscount[]>('/discounts');
   setCache(CACHE_KEY_DISCOUNTS, discounts);
+  return discounts;
+}
+
+// ─── Crafter bulk bonuses ─────────────────────────────────────────────────────
+
+export async function fetchCrafterDiscounts(bypassCache = false): Promise<ApiCrafterDiscount[]> {
+  if (!bypassCache) {
+    const cached = getCache<ApiCrafterDiscount[]>(CACHE_KEY_CRAFTER_DISCOUNTS, CRAFTER_DISCOUNTS_TTL);
+    if (cached) return cached;
+  }
+  const discounts = await apiGet<ApiCrafterDiscount[]>('/crafter-discounts');
+  setCache(CACHE_KEY_CRAFTER_DISCOUNTS, discounts);
   return discounts;
 }
 

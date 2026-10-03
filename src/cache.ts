@@ -43,6 +43,7 @@ export function clearCache(key: string): void {
 
 export const RECIPES_TTL = 20 * 1000;
 export const DISCOUNTS_TTL = 20 * 1000;
+export const CRAFTER_DISCOUNTS_TTL = 20 * 1000;
 export const MISSING_TTL = 20 * 1000;
 export const PRICES_TTL = 20 * 1000;
 export const PRICE_SETTINGS_TTL = 20 * 1000;
@@ -50,6 +51,7 @@ export const IN_PROGRESS_TTL = 20 * 1000;
 
 export const CACHE_KEY_RECIPES = 'ff14_cache_recipes';
 export const CACHE_KEY_DISCOUNTS = 'ff14_cache_discounts';
+export const CACHE_KEY_CRAFTER_DISCOUNTS = 'ff14_cache_crafter_discounts';
 export const CACHE_KEY_MISSING = 'ff14_cache_missing_materials';
 export const CACHE_KEY_PRICES = 'ff14_cache_prices';
 export const CACHE_KEY_PRICE_SETTINGS = 'ff14_cache_price_settings';

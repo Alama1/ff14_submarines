@@ -11,8 +11,18 @@ import {
   CheckCircle,
   Calculator,
 } from 'lucide-react';
-import { fetchMissingMaterials, fetchPrices, fetchPriceSettings } from '../api/endpoints';
-import { ApiMissingMaterial, ApiPriceEntry, ApiPriceSettings } from '../api/types';
+import {
+  fetchCrafterDiscounts,
+  fetchMissingMaterials,
+  fetchPrices,
+  fetchPriceSettings,
+} from '../api/endpoints';
+import {
+  ApiCrafterDiscount,
+  ApiMissingMaterial,
+  ApiPriceEntry,
+  ApiPriceSettings,
+} from '../api/types';
 import MaterialsCalculator, { CalculatorItem } from './MaterialsCalculator';
 import './ForCrafters.css';
 
@@ -52,6 +62,7 @@ export default function ForCrafters() {
   const [missing, setMissing] = useState<ApiMissingMaterial[]>([]);
   const [prices, setPrices] = useState<ApiPriceEntry[]>([]);
   const [settings, setSettings] = useState<ApiPriceSettings | null>(null);
+  const [bonusTiers, setBonusTiers] = useState<ApiCrafterDiscount[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<'all' | 'needs_crafting'>('all');
@@ -63,14 +74,16 @@ export default function ForCrafters() {
     setLoading(true);
     setError('');
     try {
-      const [missingData, pricesData, settingsData] = await Promise.all([
+      const [missingData, pricesData, settingsData, bonusTiersData] = await Promise.all([
         fetchMissingMaterials(bypassCache),
         fetchPrices(bypassCache),
         fetchPriceSettings(bypassCache),
+        fetchCrafterDiscounts(bypassCache).catch(() => [] as ApiCrafterDiscount[]),
       ]);
       setMissing(missingData);
       setPrices(pricesData);
       setSettings(settingsData);
+      setBonusTiers(bonusTiersData);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error fetching data.');
     } finally {
@@ -261,7 +274,11 @@ export default function ForCrafters() {
       </div>
 
       {showCalculator && (
-        <MaterialsCalculator items={calculatorItems} onClose={() => setShowCalculator(false)} />
+        <MaterialsCalculator
+          items={calculatorItems}
+          bonusTiers={bonusTiers}
+          onClose={() => setShowCalculator(false)}
+        />
       )}
 
       {error && (
