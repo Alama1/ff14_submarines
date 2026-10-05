@@ -13,11 +13,23 @@ import {
   TrendingUp,
   Sparkles,
   Gem,
+  Clock,
 } from 'lucide-react';
 import { fetchAboutStats } from '../api/endpoints';
 import { ApiAboutStats } from '../api/types';
 import { formatNumber } from '../utils/format';
 import './About.css';
+
+const FULFILLMENT_ROWS: Array<{
+  key: keyof NonNullable<ApiAboutStats['fulfillmentTime']>;
+  label: string;
+}> = [
+  { key: 'p25Ms', label: '25th percentile' },
+  { key: 'medianMs', label: 'Median' },
+  { key: 'p75Ms', label: '75th percentile' },
+  { key: 'p90Ms', label: '90th percentile' },
+  { key: 'avgMs', label: 'Average' },
+];
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
@@ -26,6 +38,16 @@ function formatDate(iso: string | null): string {
     month: 'long',
     day: 'numeric',
   });
+}
+
+function formatDuration(ms: number): string {
+  const totalMin = Math.round(ms / 60_000);
+  const d = Math.floor(totalMin / 1440);
+  const h = Math.floor((totalMin % 1440) / 60);
+  const m = totalMin % 60;
+  if (d > 0) return m > 0 ? `${d}d ${h}h ${m}m` : `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
 }
 
 function daysSince(iso: string | null): number | null {
@@ -204,6 +226,41 @@ export default function About() {
               sub="to make sure that I can deliver your order as fast as I can!"
             />
           </div>
+
+          {/* Fulfillment time */}
+          {stats.fulfillmentTime && (
+            <section className="ab-section">
+              <h3 className="ab-section-title">
+                <Clock size={16} /> Order fulfillment time
+              </h3>
+              <div className="ff-card ab-ful-card">
+                {FULFILLMENT_ROWS.map((row) => {
+                  const value = stats.fulfillmentTime![row.key];
+                  const max = stats.fulfillmentTime!.p90Ms;
+                  return (
+                    <div key={row.key} className={`ab-ful-row ${row.key === 'medianMs' ? 'is-median' : ''}`}>
+                      <span className="ab-ful-label">{row.label}</span>
+                      <div className="ab-top-bar">
+                        <div
+                          className="ab-top-bar-fill"
+                          style={{
+                            width: `${
+                              max > 0 ? Math.max(6, Math.round((value / max) * 100)) : 0
+                            }%`,
+                          }}
+                        />
+                      </div>
+                      <span className="ab-ful-value">{formatDuration(value)}</span>
+                    </div>
+                  );
+                })}
+                <p className="ab-top-note">
+                  How long past orders took from creation to handover — across{' '}
+                  {formatNumber(stats.fulfillmentTime.orderCount)} fulfilled orders.
+                </p>
+              </div>
+            </section>
+          )}
 
           {/* Most requested parts */}
           {stats.topParts.length > 0 && (

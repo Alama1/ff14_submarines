@@ -196,5 +196,13 @@ export interface ApiAboutStats {
     myWorth: number;
     worth: number;
   };
+  fulfillmentTime: {
+    orderCount: number;
+    p25Ms: number;
+    medianMs: number;
+    p75Ms: number;
+    p90Ms: number;
+    avgMs: number;
+  } | null;
   topParts: Array<{ name: string; quantity: number }>;
 }

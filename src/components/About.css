@@ -245,6 +245,50 @@
   margin-top: 0.25rem;
 }
 
+/* ─── Fulfillment time chart ─────────────────────────────────────────────── */
+.ab-ful-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.ab-ful-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 150px) 1fr auto;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.ab-ful-label {
+  color: var(--color-text-main);
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.ab-ful-row.is-median .ab-ful-label {
+  color: var(--color-gold-light);
+  font-weight: 600;
+}
+
+.ab-ful-row.is-median .ab-top-bar-fill {
+  background: linear-gradient(90deg, var(--color-gold) 0%, var(--color-gold-light) 100%);
+  box-shadow: 0 0 12px var(--color-gold-glow);
+}
+
+.ab-ful-value {
+  font-family: var(--font-title);
+  font-weight: 700;
+  color: var(--color-text-title);
+  font-size: 0.92rem;
+  min-width: 6.5rem;
+  text-align: right;
+}
+
+.ab-ful-row.is-median .ab-ful-value {
+  color: var(--color-gold-light);
+}
+
 /* ─── Trust cards ────────────────────────────────────────────────────────── */
 .ab-trust-grid {
   display: grid;
@@ -307,6 +351,21 @@
 
   .ab-top-bar {
     display: none;
+  }
+
+  .ab-ful-row {
+    grid-template-columns: 1fr auto;
+    gap: 0.4rem 0.75rem;
+  }
+
+  .ab-ful-row .ab-top-bar {
+    display: block;
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .ab-ful-value {
+    min-width: 0;
   }
 }
 
