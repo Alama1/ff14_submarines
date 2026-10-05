@@ -1,5 +1,6 @@
 import { apiGet, apiPost } from './client';
 import {
+  ApiAboutStats,
   ApiCrafterDiscount,
   ApiDiscount,
   ApiMissingMaterial,
@@ -20,6 +21,7 @@ import {
   CACHE_KEY_PRICES,
   CACHE_KEY_PRICE_SETTINGS,
   CACHE_KEY_IN_PROGRESS,
+  CACHE_KEY_ABOUT_STATS,
   RECIPES_TTL,
   DISCOUNTS_TTL,
   CRAFTER_DISCOUNTS_TTL,
@@ -27,6 +29,7 @@ import {
   PRICES_TTL,
   PRICE_SETTINGS_TTL,
   IN_PROGRESS_TTL,
+  ABOUT_STATS_TTL,
 } from '../cache';
 
 // ─── Recipes / parts ──────────────────────────────────────────────────────────
@@ -125,4 +128,16 @@ export async function fetchPriceSettings(bypassCache = false): Promise<ApiPriceS
   const settings = await apiGet<ApiPriceSettings>('/prices/settings');
   setCache(CACHE_KEY_PRICE_SETTINGS, settings);
   return settings;
+}
+
+// ─── About (live workshop statistics) ─────────────────────────────────────────
+
+export async function fetchAboutStats(bypassCache = false): Promise<ApiAboutStats> {
+  if (!bypassCache) {
+    const cached = getCache<ApiAboutStats>(CACHE_KEY_ABOUT_STATS, ABOUT_STATS_TTL);
+    if (cached) return cached;
+  }
+  const stats = await apiGet<ApiAboutStats>('/about');
+  setCache(CACHE_KEY_ABOUT_STATS, stats);
+  return stats;
 }

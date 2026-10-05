@@ -48,6 +48,7 @@ export const MISSING_TTL = 20 * 1000;
 export const PRICES_TTL = 20 * 1000;
 export const PRICE_SETTINGS_TTL = 20 * 1000;
 export const IN_PROGRESS_TTL = 20 * 1000;
+export const ABOUT_STATS_TTL = 60 * 1000;
 
 export const CACHE_KEY_RECIPES = 'ff14_cache_recipes';
 export const CACHE_KEY_DISCOUNTS = 'ff14_cache_discounts';
@@ -56,3 +57,4 @@ export const CACHE_KEY_MISSING = 'ff14_cache_missing_materials';
 export const CACHE_KEY_PRICES = 'ff14_cache_prices';
 export const CACHE_KEY_PRICE_SETTINGS = 'ff14_cache_price_settings';
 export const CACHE_KEY_IN_PROGRESS = 'ff14_cache_in_progress_orders';
+export const CACHE_KEY_ABOUT_STATS = 'ff14_cache_about_stats';

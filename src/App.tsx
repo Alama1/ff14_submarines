@@ -3,12 +3,13 @@ import { useCatalog } from './hooks/useCatalog';
 import ForCrafters from './components/ForCrafters';
 import SetBuilder from './components/SetBuilder';
 import OrdersPanel from './components/OrdersPanel';
-import { Anchor, Hammer, RefreshCw, Wrench, Ship } from 'lucide-react';
+import About from './components/About';
+import { Anchor, Hammer, RefreshCw, Wrench, Ship, Info } from 'lucide-react';
 import './App.css';
 
-type TabId = 'builder' | 'orders' | 'crafters';
+type TabId = 'builder' | 'orders' | 'crafters' | 'about';
 
-const VALID_TABS: TabId[] = ['builder', 'orders', 'crafters'];
+const VALID_TABS: TabId[] = ['builder', 'orders', 'crafters', 'about'];
 
 function getTabFromHash(): TabId {
   const hash = window.location.hash.replace('#', '').toLowerCase();
@@ -81,6 +82,14 @@ function App() {
           <Wrench size={14} className="tab-btn-icon" />
           For crafters
         </button>
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === 'about' ? 'active' : ''}`}
+          onClick={() => setActiveTab('about')}
+        >
+          <Info size={14} className="tab-btn-icon" />
+          About
+        </button>
       </nav>
 
       <main className="app-main">
@@ -116,6 +125,7 @@ function App() {
               />
             )}
             {activeTab === 'crafters' && <ForCrafters />}
+            {activeTab === 'about' && <About />}
           </>
         )}
       </main>

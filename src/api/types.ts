@@ -167,3 +167,34 @@ export interface ApiPriceSettings {
   world: string;
   source: string;
 }
+
+// ─── About / stats ────────────────────────────────────────────────────────────
+
+export interface ApiAboutStats {
+  generatedAt: string;
+  tracking: {
+    firstOrderAt: string | null;
+    lastOrderAt: string | null;
+    lastFulfilledAt: string | null;
+  };
+  orders: {
+    total: number;
+    byStatus: Record<OrderStatus, number>;
+    active: number;
+    fulfilled: number;
+    uniqueClients: number;
+    revenue: number;
+    discountsGiven: number;
+  };
+  crafting: {
+    fulfilledParts: number;
+    activeParts: number;
+    allTimeParts: number;
+  };
+  precrafts: {
+    marketWorth: number;
+    myWorth: number;
+    worth: number;
+  };
+  topParts: Array<{ name: string; quantity: number }>;
+}
