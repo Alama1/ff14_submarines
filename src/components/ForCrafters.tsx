@@ -24,6 +24,7 @@ import {
   ApiPriceSettings,
 } from '../api/types';
 import MaterialsCalculator, { CalculatorItem } from './MaterialsCalculator';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import './ForCrafters.css';
 
 function formatGil(n: number): string {
@@ -98,6 +99,10 @@ export default function ForCrafters() {
       fetchData();
     }
   }, [fetchData]);
+
+  // Keep the shopping list fresh while the tab stays open. The cache TTL is
+  // shorter than the poll interval, so every poll fetches live data.
+  useAutoRefresh(() => fetchData(), loading);
 
   const priceById = useMemo(
     () => new Map(prices.map((p) => [p.id, p.effectivePrice])),

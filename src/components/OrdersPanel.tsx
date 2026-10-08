@@ -30,6 +30,7 @@ import {
   removeRecentOrderCode,
 } from '../utils/orderCodes';
 import { useCatalog } from '../hooks/useCatalog';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import './OrdersPanel.css';
 
 interface OrdersPanelProps {
@@ -421,9 +422,14 @@ export default function OrdersPanel({ catalog, initialCode }: OrdersPanelProps) 
   const [error, setError] = useState('');
   const [recentCodes, setRecentCodes] = useState<string[]>(getRecentOrderCodes);
 
+  // Sequence guard: invalidates in-flight background order lookups so a slow
+  // poll can never overwrite a newer manual lookup.
+  const lookupSeq = useRef(0);
+
   const handleLookup = useCallback(async (rawCode: string) => {
     const code = rawCode.trim().toUpperCase();
     if (!code) return;
+    lookupSeq.current += 1;
     setLoading(true);
     setError('');
     try {
@@ -452,6 +458,7 @@ export default function OrdersPanel({ catalog, initialCode }: OrdersPanelProps) 
   useEffect(() => {
     if (!initialCode || autoLookupDone.current) return;
     autoLookupDone.current = true;
+    lookupSeq.current += 1;
     setLoading(true);
     lookupOrder(initialCode)
       .then((result) => {
@@ -484,6 +491,28 @@ export default function OrdersPanel({ catalog, initialCode }: OrdersPanelProps) 
     refresh(true);
     if (order) handleLookup(order.orderCode);
   };
+
+  // Auto-refresh while the tab stays open: silently update the build queue
+  // (no loading toggle, so the page never flashes or loses state) and re-check
+  // the currently loaded order's status. Errors are ignored — the last known
+  // data simply stays on screen until the next poll.
+  useAutoRefresh(
+    () => {
+      refresh(false, true);
+      if (order) {
+        const seq = ++lookupSeq.current;
+        const code = order.orderCode;
+        lookupOrder(code)
+          .then((result) => {
+            if (lookupSeq.current === seq) setOrder(result);
+          })
+          .catch(() => {
+            // Keep showing the last known order state on transient failures.
+          });
+      }
+    },
+    catalog.loading || loading
+  );
 
   return (
     <div className="fade-in op-page">

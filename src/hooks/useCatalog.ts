@@ -24,13 +24,16 @@ export interface CatalogData {
 export interface UseCatalogResult extends CatalogData {
   loading: boolean;
   error: string;
-  refresh: (bypassCache?: boolean) => Promise<void>;
+  refresh: (bypassCache?: boolean, silent?: boolean) => Promise<void>;
 }
 
 /**
  * Loads the shared catalog data (parts, discounts, in-progress orders, live
  * material stock) once and caches it in localStorage, so all tabs share the
  * same snapshot without duplicate network requests.
+ *
+ * A "silent" refresh updates the data in place without toggling loading or
+ * error, so background polling never unmounts the active tab.
  */
 export function useCatalog(): UseCatalogResult {
   const [parts, setParts] = useState<ApiSubmarinePart[]>([]);
@@ -41,9 +44,11 @@ export function useCatalog(): UseCatalogResult {
   const [error, setError] = useState('');
   const didFetch = useRef(false);
 
-  const fetchData = useCallback(async (bypassCache = false) => {
-    setLoading(true);
-    setError('');
+  const fetchData = useCallback(async (bypassCache = false, silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError('');
+    }
     try {
       const [partsData, discountsData, inProgressData, missingData] = await Promise.all([
         fetchSubmarineParts(bypassCache),
@@ -56,9 +61,13 @@ export function useCatalog(): UseCatalogResult {
       setInProgress(inProgressData);
       setMissing(missingData);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to load catalog data.');
+      if (!silent) {
+        setError(e instanceof Error ? e.message : 'Failed to load catalog data.');
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, []);
 
