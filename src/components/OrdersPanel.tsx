@@ -204,9 +204,19 @@ function OrderCard({ order }: { order: ApiOrder }) {
           <span className="op-price-value">{formatGil(order.subtotal)}</span>
         </div>
         <div className="op-price-col">
-          <span className="op-price-label is-success">Discount</span>
+          <span className="op-price-label is-success">
+            {order.discountSource === 'promo' && order.promoCode
+              ? `Promo (${order.promoCode})`
+              : 'Discount'}
+          </span>
           <span className="op-price-value is-success">
-            {discountPct > 0 ? `−${formatGil(order.discountAmt)} (${discountPct}%)` : '—'}
+            {order.discountAmt > 0
+              ? `−${formatGil(order.discountAmt)}${
+                  discountPct > 0 && order.discountSource !== 'promo'
+                    ? ` (${discountPct}%)`
+                    : ''
+                }`
+              : '—'}
           </span>
         </div>
         <div className="op-price-col">

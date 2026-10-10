@@ -166,6 +166,65 @@
   font-size: 9px;
 }
 
+/* Promo code */
+.sb-promo-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.sb-promo-input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sb-promo-check {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.9rem;
+  font-size: 0.72rem;
+}
+
+.sb-promo-msg {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  margin-top: 0.45rem;
+  line-height: 1.35;
+}
+
+.sb-promo-msg svg {
+  flex-shrink: 0;
+}
+
+.sb-promo-msg.is-success {
+  color: var(--color-success);
+}
+
+.sb-promo-msg.is-error {
+  color: var(--color-error);
+}
+
+.sb-promo-msg.is-info {
+  color: var(--color-warning);
+}
+
+.sb-success-promo-note {
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+
 /* Form states */
 .sb-error {
   display: flex;
@@ -1173,8 +1232,18 @@
   .sb-multiplier-input,
   .sb-fulfillment-select,
   .sb-fulfillment-date,
-  .sb-notes-input {
+  .sb-notes-input,
+  .sb-promo-input {
     font-size: 16px;
+  }
+
+  .sb-promo-row {
+    flex-direction: column;
+  }
+
+  .sb-promo-check {
+    justify-content: center;
+    padding: 0.6rem 0.9rem;
   }
 
   .sb-tab {

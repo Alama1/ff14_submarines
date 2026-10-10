@@ -22,8 +22,9 @@ import {
   computeOrderAvailability,
   computePartCraftable,
 } from '../utils/stockCalc';
-import { submitOrder } from '../api/endpoints';
+import { submitOrder, validatePromoCode } from '../api/endpoints';
 import { ApiError } from '../api/client';
+import { PromoCodeValidation } from '../api/types';
 import { addRecentOrderCode } from '../utils/orderCodes';
 import { Hammer } from 'lucide-react';
 import './SetBuilder.css';
@@ -134,6 +135,8 @@ interface OrderFormState {
 interface SubmittedOrder {
   orderCode: string;
   total: number;
+  promoCode?: string | null;
+  discountSource?: 'bulk' | 'promo' | null;
 }
 
 interface OrderSubmitFormProps {
@@ -141,7 +144,6 @@ interface OrderSubmitFormProps {
   subtotal: number;
   discountPct: number;
   discountAmt: number;
-  total: number;
   onCancel: () => void;
   onSubmitted: (order: SubmittedOrder) => void;
 }
@@ -151,7 +153,6 @@ function OrderSubmitForm({
   subtotal,
   discountPct,
   discountAmt,
-  total,
   onCancel,
   onSubmitted,
 }: OrderSubmitFormProps) {
@@ -165,6 +166,52 @@ function OrderSubmitForm({
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [promoInput, setPromoInput] = useState('');
+  const [promoCheck, setPromoCheck] = useState<PromoCodeValidation | null>(null);
+  const [promoChecking, setPromoChecking] = useState(false);
+  const [promoError, setPromoError] = useState('');
+
+  // Promo discount recomputed against the live subtotal — mirrors the backend
+  // (percent rounds, flat caps at the subtotal).
+  const promoInfo = promoCheck?.valid ? promoCheck.code ?? null : null;
+  const promoAmt = useMemo(() => {
+    if (!promoInfo) return 0;
+    const value = Number(promoInfo.discountValue) || 0;
+    return promoInfo.discountType === 'percent'
+      ? Math.round(subtotal * (value / 100))
+      : Math.max(0, Math.min(Math.round(value), subtotal));
+  }, [promoInfo, subtotal]);
+
+  // Promo and bulk discounts never stack — the higher one wins (ties → promo).
+  const promoWins = promoAmt >= discountAmt && promoAmt > 0;
+  const effectiveAmt = promoWins ? promoAmt : discountAmt;
+  const effectiveTotal = subtotal - effectiveAmt;
+
+  const resetPromoResult = () => {
+    setPromoCheck(null);
+    setPromoError('');
+  };
+
+  const handleCheckPromo = async () => {
+    const code = promoInput.trim();
+    setPromoError('');
+    if (!code) {
+      setPromoCheck(null);
+      return;
+    }
+    setPromoChecking(true);
+    try {
+      const result = await validatePromoCode(code, subtotal);
+      setPromoCheck(result);
+    } catch (e: unknown) {
+      setPromoCheck(null);
+      setPromoError(
+        e instanceof ApiError ? e.message : 'Could not check the promo code. Please try again.'
+      );
+    } finally {
+      setPromoChecking(false);
+    }
+  };
 
   const handleSubmit = async () => {
     setError('');
@@ -175,6 +222,31 @@ function OrderSubmitForm({
     if (form.fulfillmentType === 'date' && !form.fulfillmentDate) {
       setError('Please pick a fulfillment date or switch back to ASAP.');
       return;
+    }
+
+    // Re-validate the promo code right before placing the order — uses may
+    // have run out since it was last checked.
+    let appliedPromo: string | undefined;
+    if (promoInput.trim()) {
+      setPromoChecking(true);
+      let result: PromoCodeValidation;
+      try {
+        result = await validatePromoCode(promoInput.trim(), subtotal);
+      } catch (e: unknown) {
+        setPromoCheck(null);
+        setPromoError(
+          e instanceof ApiError ? e.message : 'Could not check the promo code. Please try again.'
+        );
+        setPromoChecking(false);
+        return;
+      }
+      setPromoChecking(false);
+      setPromoCheck(result);
+      if (!result.valid) {
+        setError(result.message || 'This promo code cannot be used.');
+        return;
+      }
+      appliedPromo = result.code?.code;
     }
 
     const fulfillmentDt =
@@ -188,10 +260,16 @@ function OrderSubmitForm({
         contactInfo: form.contactInfo.trim() || undefined,
         notes: form.notes.trim() || undefined,
         fulfillmentDt,
+        promoCode: appliedPromo,
         items,
       });
       addRecentOrderCode(order.orderCode);
-      onSubmitted({ orderCode: order.orderCode, total: order.total });
+      onSubmitted({
+        orderCode: order.orderCode,
+        total: order.total,
+        promoCode: order.promoCode,
+        discountSource: order.discountSource,
+      });
     } catch (e: unknown) {
       setError(
         e instanceof ApiError
@@ -299,24 +377,90 @@ function OrderSubmitForm({
         )}
       </div>
 
+      {/* Promo code */}
+      <div className="form-group sb-form-group">
+        <label className="form-label sb-label-sm">Promo Code (optional)</label>
+        <div className="sb-promo-row">
+          <input
+            type="text"
+            className="form-input sb-promo-input"
+            placeholder="e.g. PROMO-AB2C-9XZ4"
+            value={promoInput}
+            maxLength={40}
+            onChange={(e) => {
+              setPromoInput(e.target.value.toUpperCase());
+              resetPromoResult();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleCheckPromo();
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="ff-btn-secondary sb-promo-check"
+            onClick={handleCheckPromo}
+            disabled={promoChecking || !promoInput.trim()}
+          >
+            {promoChecking ? <RefreshCw size={14} className="spin" /> : <Tag size={14} />}
+            Check
+          </button>
+        </div>
+        {promoError && (
+          <div className="sb-promo-msg is-error">
+            <AlertCircle size={12} />
+            {promoError}
+          </div>
+        )}
+        {!promoError && promoCheck && (
+          promoCheck.valid ? (
+            <div className="sb-promo-msg is-success">
+              <Check size={12} />
+              {promoInfo!.discountType === 'percent'
+                ? `${Number(promoInfo!.discountValue)}% off (−${formatGil(promoAmt)})`
+                : `−${formatGil(promoAmt)}`}{' '}
+              applied to this order
+            </div>
+          ) : (
+            <div className="sb-promo-msg is-error">
+              <AlertCircle size={12} />
+              {promoCheck.message || 'This promo code cannot be used.'}
+            </div>
+          )
+        )}
+        {promoCheck?.valid && !promoWins && discountAmt > 0 && (
+          <div className="sb-promo-msg is-info">
+            <AlertCircle size={12} />
+            Your bulk order discount ({discountPct}%) is higher — it will be applied instead of the
+            promo code.
+          </div>
+        )}
+      </div>
+
       {/* Price recap */}
       <div className="sb-price-recap">
-        {discountPct > 0 && (
+        {(discountPct > 0 || promoAmt > 0) && (
           <>
             <div className="sb-price-col">
               <span className="sb-price-label is-muted">Subtotal</span>
               <span className="sb-price-value">{formatGil(subtotal)}</span>
             </div>
             <div className="sb-price-col">
-              <span className="sb-price-label is-success">Bulk Discount ({discountPct}%)</span>
-              <span className="sb-price-value is-success">−{formatGil(discountAmt)}</span>
+              <span className="sb-price-label is-success">
+                {promoWins
+                  ? `Promo Code (${promoInfo!.code})`
+                  : `Bulk Discount (${discountPct}%)`}
+              </span>
+              <span className="sb-price-value is-success">−{formatGil(effectiveAmt)}</span>
             </div>
           </>
         )}
         <div className="sb-price-col">
           <span className="sb-price-label is-gold">Total</span>
           <div className="gil-price sb-price-total">
-            <span>{formatNumber(total)}</span>
+            <span>{formatNumber(effectiveTotal)}</span>
             <span className="gil-coin sb-coin-sm">G</span>
           </div>
         </div>
@@ -334,12 +478,12 @@ function OrderSubmitForm({
           type="button"
           className="ff-btn glow-active sb-submit-btn"
           onClick={handleSubmit}
-          disabled={submitting}
+          disabled={submitting || promoChecking}
         >
           {submitting ? <RefreshCw size={16} className="spin" /> : <Send size={16} />}
           {submitting ? 'Submitting…' : 'Submit Order Request'}
         </button>
-        <button type="button" className="ff-btn-secondary" onClick={onCancel} disabled={submitting}>
+        <button type="button" className="ff-btn-secondary" onClick={onCancel} disabled={submitting || promoChecking}>
           Cancel
         </button>
       </div>
@@ -377,6 +521,12 @@ function OrderSuccessView({ order, onTrack, onNewOrder }: OrderSuccessViewProps)
           Your order has been created with a total of{' '}
           <strong>{formatGil(order.total)}</strong>.
         </p>
+        {order.promoCode && order.discountSource === 'bulk' && (
+          <p className="sb-success-promo-note">
+            Your bulk order discount was higher, so it was applied instead of the promo code{' '}
+            <strong>{order.promoCode}</strong>.
+          </p>
+        )}
       </div>
 
       <div className="sb-success-code-block">
@@ -1052,7 +1202,6 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
                 subtotal={overallSubtotal}
                 discountPct={discountPct}
                 discountAmt={discountAmount}
-                total={totalPrice}
                 onCancel={() => setShowSubmitForm(false)}
                 onSubmitted={(order) => {
                   setSubmittedOrder(order);

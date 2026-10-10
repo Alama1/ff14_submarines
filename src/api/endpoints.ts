@@ -10,6 +10,7 @@ import {
   ApiSubmarinePart,
   CreateOrderDto,
   InProgressOrder,
+  PromoCodeValidation,
 } from './types';
 import {
   getCache,
@@ -73,6 +74,14 @@ export async function fetchCrafterDiscounts(bypassCache = false): Promise<ApiCra
 /** Creates an order request and returns the created order incl. its confirmation code. */
 export function submitOrder(dto: CreateOrderDto): Promise<ApiOrder> {
   return apiPost<ApiOrder>('/orders', dto);
+}
+
+/** Checks a promo code against the current order subtotal (not consumed until the order is placed). */
+export function validatePromoCode(code: string, subtotal?: number): Promise<PromoCodeValidation> {
+  return apiPost<PromoCodeValidation>('/promo-codes/validate', {
+    code: code.trim(),
+    ...(subtotal !== undefined ? { subtotal } : {}),
+  });
 }
 
 /** Looks up an order by its public confirmation code, e.g. "SUB-7K9P". */

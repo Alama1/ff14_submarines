@@ -81,6 +81,8 @@ export interface ApiOrder {
   subtotal: number;
   discountPct: string;
   discountAmt: number;
+  discountSource?: 'bulk' | 'promo' | null;
+  promoCode?: string | null;
   total: number;
   status: OrderStatus;
   notes: string | null;
@@ -103,7 +105,32 @@ export interface CreateOrderDto {
   contactInfo?: string;
   notes?: string;
   fulfillmentDt?: string;
+  promoCode?: string;
   items: CreateOrderItemDto[];
+}
+
+// ─── Promo (discount) codes ───────────────────────────────────────────────────
+
+export type PromoCodeType = 'flat' | 'percent';
+
+export type PromoCodeRejectionReason = 'not_found' | 'not_started' | 'expired' | 'exhausted';
+
+export interface PromoCodeInfo {
+  code: string;
+  discountType: PromoCodeType;
+  discountValue: string | number;
+  maxUses: number;
+  usedCount: number;
+  activeFrom: string | null;
+  activeUntil: string | null;
+}
+
+export interface PromoCodeValidation {
+  valid: boolean;
+  reason?: PromoCodeRejectionReason;
+  message?: string;
+  code?: PromoCodeInfo;
+  discountAmt?: number;
 }
 
 export interface InProgressOrder {
