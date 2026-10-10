@@ -217,7 +217,7 @@ export default function About() {
               icon={<Sparkles size={20} />}
               value={formatCompact(stats.orders.discountsGiven)}
               label="Gil saved by clients"
-              sub={`via automatic bulk discounts — ${formatNumber(stats.orders.discountsGiven)} gil`}
+              sub={`via bulk & promo discounts — ${formatNumber(stats.orders.discountsGiven)} gil`}
             />
             <StatCard
               icon={<Gem size={20} />}
