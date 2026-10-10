@@ -796,7 +796,6 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
     const items: CreateOrderItemDto[] = [];
     builds.forEach((b) => {
       ALL_PART_TYPES.forEach((type) => {
-        if (type === 'Materials') return;
         const part = b.selections[type];
         const qty = b.quantities[type];
         if (!part || qty <= 0) return;
@@ -982,7 +981,7 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
                 </div>
                 <div className="sb-mrm-note">
                   <span className="sb-mrm-note-text">
-                    Due to high demand, repair kits ordering is temporary paused
+                    Order as "Extra" — priced per kit, no crafting required
                   </span>
                 </div>
               </div>
