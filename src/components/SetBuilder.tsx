@@ -142,6 +142,7 @@ interface SubmittedOrder {
 interface OrderSubmitFormProps {
   items: CreateOrderItemDto[];
   subtotal: number;
+  promoBase: number;
   discountPct: number;
   discountAmt: number;
   onCancel: () => void;
@@ -151,6 +152,7 @@ interface OrderSubmitFormProps {
 function OrderSubmitForm({
   items,
   subtotal,
+  promoBase,
   discountPct,
   discountAmt,
   onCancel,
@@ -171,16 +173,16 @@ function OrderSubmitForm({
   const [promoChecking, setPromoChecking] = useState(false);
   const [promoError, setPromoError] = useState('');
 
-  // Promo discount recomputed against the live subtotal — mirrors the backend
-  // (percent rounds, flat caps at the subtotal).
+  // Promo discount recomputed against the promo-eligible subtotal (excludes
+  // repair kits) — mirrors the backend (percent rounds, flat caps at the base).
   const promoInfo = promoCheck?.valid ? promoCheck.code ?? null : null;
   const promoAmt = useMemo(() => {
     if (!promoInfo) return 0;
     const value = Number(promoInfo.discountValue) || 0;
     return promoInfo.discountType === 'percent'
-      ? Math.round(subtotal * (value / 100))
-      : Math.max(0, Math.min(Math.round(value), subtotal));
-  }, [promoInfo, subtotal]);
+      ? Math.round(promoBase * (value / 100))
+      : Math.max(0, Math.min(Math.round(value), promoBase));
+  }, [promoInfo, promoBase]);
 
   // Promo and bulk discounts never stack — the higher one wins (ties → promo).
   const promoWins = promoAmt >= discountAmt && promoAmt > 0;
@@ -201,7 +203,7 @@ function OrderSubmitForm({
     }
     setPromoChecking(true);
     try {
-      const result = await validatePromoCode(code, subtotal);
+      const result = await validatePromoCode(code, promoBase);
       setPromoCheck(result);
     } catch (e: unknown) {
       setPromoCheck(null);
@@ -231,7 +233,7 @@ function OrderSubmitForm({
       setPromoChecking(true);
       let result: PromoCodeValidation;
       try {
-        result = await validatePromoCode(promoInput.trim(), subtotal);
+        result = await validatePromoCode(promoInput.trim(), promoBase);
       } catch (e: unknown) {
         setPromoCheck(null);
         setPromoError(
@@ -722,6 +724,17 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
     0
   );
 
+  // Promo codes never discount repair kits (Materials) — mirrors the backend.
+  const promoBaseSubtotal = builds.reduce(
+    (sum, b) =>
+      sum +
+      PART_TYPES.reduce<number>((partSum, type) => {
+        const part = b.selections[type];
+        return partSum + (part ? part.price * b.quantities[type] : 0);
+      }, 0),
+    0
+  );
+
   const totalParts = builds.reduce((sum, b) => {
     return (
       sum +
@@ -1199,6 +1212,7 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
               <OrderSubmitForm
                 items={orderItems}
                 subtotal={overallSubtotal}
+                promoBase={promoBaseSubtotal}
                 discountPct={discountPct}
                 discountAmt={discountAmount}
                 onCancel={() => setShowSubmitForm(false)}
