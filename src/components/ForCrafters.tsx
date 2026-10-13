@@ -391,6 +391,13 @@ export default function ForCrafters() {
                 <span className="fc-th is-right" role="columnheader">
                   Current / Target
                 </span>
+                <span
+                  className="fc-th is-right"
+                  role="columnheader"
+                  title="Raw materials demanded by active workshop orders"
+                >
+                  Orders
+                </span>
                 <button
                   type="button"
                   className="fc-th is-sortable is-right"
@@ -473,6 +480,18 @@ export default function ForCrafters() {
                         <span className="fc-stock-muted">{formatGil(item.currentStock)}</span>
                         <span className="fc-stock-sep">/</span>
                         <span className="fc-stock-target">{formatGil(item.desiredQuantity)}</span>
+                      </div>
+
+                      {/* Active order demand */}
+                      <div
+                        className="fc-cell is-right fc-cell-orders"
+                        role="cell"
+                        title="Raw materials demanded by active workshop orders"
+                      >
+                        <span className="fc-stat-label">Orders</span>
+                        <span className="fc-stock-muted">
+                          {(item.orderNeeded ?? 0) > 0 ? formatGil(item.orderNeeded!) : '—'}
+                        </span>
                       </div>
 
                       {/* Needed (claims-adjusted, stock target + active orders merged server-side) */}
