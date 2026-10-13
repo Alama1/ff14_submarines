@@ -57,8 +57,6 @@ function SortIndicator({
 interface RowData extends ApiMissingMaterial {
   pricePerUnit: number | null;
   totalPrice: number;
-  /** Claims-adjusted stock-target shortfall plus active-order shortfall. */
-  neededTotal: number;
 }
 
 export default function ForCrafters() {
@@ -115,12 +113,10 @@ export default function ForCrafters() {
     () =>
       missing.map((m) => {
         const pricePerUnit = priceById.get(m.id) ?? null;
-        const neededTotal = Math.max(0, m.remaining) + Math.max(0, m.orderMissing ?? 0);
         return {
           ...m,
           pricePerUnit,
-          neededTotal,
-          totalPrice: pricePerUnit ? Math.round(neededTotal * pricePerUnit) : 0,
+          totalPrice: pricePerUnit ? Math.round(m.remaining * pricePerUnit) : 0,
         };
       }),
     [missing, priceById]
@@ -147,7 +143,7 @@ export default function ForCrafters() {
   const sortedItems = useMemo(() => {
     let items = [...rows];
     if (filter === 'needs_crafting') {
-      items = items.filter((i) => i.neededTotal > 0);
+      items = items.filter((i) => i.remaining > 0);
     }
     items.sort((a, b) => {
       let va: string | number;
@@ -158,8 +154,8 @@ export default function ForCrafters() {
           vb = b.name.toLowerCase();
           break;
         case 'remaining':
-          va = a.neededTotal;
-          vb = b.neededTotal;
+          va = a.remaining;
+          vb = b.remaining;
           break;
         case 'pricePerUnit':
           va = a.pricePerUnit ?? 0;
@@ -178,7 +174,7 @@ export default function ForCrafters() {
   }, [rows, filter, sortField, sortDir]);
 
   const filteredGrandTotal = sortedItems.reduce((s, i) => s + i.totalPrice, 0);
-  const fullyClaimedCount = rows.filter((r) => r.neededTotal <= 0).length;
+  const fullyClaimedCount = rows.filter((r) => r.remaining <= 0).length;
 
   // Feed for the payout calculator — every known material with its live price
   const calculatorItems = useMemo<CalculatorItem[]>(
@@ -187,7 +183,7 @@ export default function ForCrafters() {
         id: r.id,
         name: r.name,
         unitPrice: r.pricePerUnit,
-        remaining: r.neededTotal,
+        remaining: Math.max(0, r.remaining),
       })),
     [rows]
   );
@@ -436,10 +432,10 @@ export default function ForCrafters() {
                   </div>
                 )}
                 {sortedItems.map((item) => {
-                  const isFullyClaimed = item.neededTotal <= 0;
-                  const claimProgress = item.deficit > 0 ? Math.min(1, item.claimed / item.deficit) : 1;
+                  const isFullyClaimed = item.remaining <= 0;
+                  const claimTarget = item.totalMissing ?? item.deficit;
+                  const claimProgress = claimTarget > 0 ? Math.min(1, item.claimed / claimTarget) : 1;
                   const claimerNames = item.claims.map((c) => `${c.claimedFor} (${c.quantity})`).join(', ');
-                  const orderMissing = Math.max(0, item.orderMissing ?? 0);
 
                   return (
                     <div key={item.id} className={`fc-body-row ${isFullyClaimed ? 'is-claimed' : ''}`} role="row">
@@ -448,15 +444,6 @@ export default function ForCrafters() {
                         <div className="fc-name-wrap">
                           <div className="fc-name-row">
                             <span>{item.name}</span>
-                            {orderMissing > 0 && (
-                              <span
-                                title={`Needed for active workshop orders (after current stock)`}
-                                className="fc-order-chip"
-                              >
-                                <Hammer size={10} />
-                                {formatGil(orderMissing)} for orders
-                              </span>
-                            )}
                             {item.claimed > 0 && (
                               <span
                                 title={claimerNames ? `Claimed by: ${claimerNames}` : undefined}
@@ -465,7 +452,7 @@ export default function ForCrafters() {
                                 <Hammer size={10} />
                                 {isFullyClaimed
                                   ? `Fully Claimed (${formatGil(item.claimed)})`
-                                  : `${formatGil(item.claimed)} / ${formatGil(item.deficit)} claimed`}
+                                  : `${formatGil(item.claimed)} / ${formatGil(claimTarget)} claimed`}
                               </span>
                             )}
                           </div>
@@ -488,16 +475,16 @@ export default function ForCrafters() {
                         <span className="fc-stock-target">{formatGil(item.desiredQuantity)}</span>
                       </div>
 
-                      {/* Needed (stock-target gap + active-order gap) */}
+                      {/* Needed (claims-adjusted, stock target + active orders merged server-side) */}
                       <div
                         className={`fc-cell is-right fc-cell-needed ${
-                          item.neededTotal > 0 ? 'is-warning' : 'is-success'
+                          item.remaining > 0 ? 'is-warning' : 'is-success'
                         }`}
                         role="cell"
                       >
                         <span className="fc-stat-label">Needed</span>
                         <span className="fc-needed-value">
-                          {item.neededTotal > 0 ? formatGil(item.neededTotal) : '✓'}
+                          {item.remaining > 0 ? formatGil(item.remaining) : '✓'}
                         </span>
                       </div>
 
