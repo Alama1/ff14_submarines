@@ -173,6 +173,12 @@ export interface ApiMissingMaterial {
   updatedAt: string;
   claimed: number;
   remaining: number;
+  /** Raw materials demanded by active orders. */
+  orderNeeded?: number;
+  /** Shortfall for active orders, after current stock. */
+  orderMissing?: number;
+  /** deficit + orderMissing — total the workshop needs gathered. */
+  totalMissing?: number;
   claims: ApiClaim[];
 }
 

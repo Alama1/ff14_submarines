@@ -423,6 +423,19 @@
   border-color: rgba(16, 185, 129, 0.25);
 }
 
+.fc-order-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(249, 115, 22, 0.12);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
 .fc-progress {
   width: 160px;
   height: 3px;
