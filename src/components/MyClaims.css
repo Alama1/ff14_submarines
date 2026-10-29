@@ -1,0 +1,570 @@
+/* ─── My Claims panel ───────────────────────────────────────────────────────── */
+.my-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.my-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.my-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.my-panel-title svg {
+  color: var(--color-gold);
+}
+
+.my-panel-sub {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  max-width: 640px;
+}
+
+.my-close-btn {
+  padding: 0.4rem;
+  min-width: 34px;
+  min-height: 34px;
+  flex-shrink: 0;
+}
+
+/* Lookup card */
+.my-lookup-card {
+  padding: 1.1rem 1.25rem;
+}
+
+.my-lookup-form {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.my-code-group {
+  flex: 1 1 260px;
+  margin: 0;
+}
+
+.my-code-label {
+  font-size: 0.72rem;
+}
+
+.my-code-input {
+  font-family: var(--font-title);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.my-track-btn {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+.my-recent {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.my-recent-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.my-recent-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.my-recent-chip {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(197, 160, 89, 0.25);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.my-recent-chip.is-active {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 8px rgba(197, 160, 89, 0.3);
+}
+
+.my-recent-code-btn {
+  background: none;
+  border: none;
+  color: var(--color-gold-light);
+  font-family: var(--font-title);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.4rem 0.3rem 0.7rem;
+  cursor: pointer;
+}
+
+.my-recent-code-btn:hover {
+  color: #fff;
+}
+
+.my-recent-remove-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  padding: 0.3rem 0.55rem 0.3rem 0.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.my-recent-remove-btn:hover {
+  color: var(--color-error);
+}
+
+.my-alert {
+  align-items: center;
+}
+
+.my-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1rem;
+  color: var(--color-text-muted);
+}
+
+.my-loading-spinner {
+  color: var(--color-gold);
+}
+
+.my-loading-text {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* Empty state */
+.my-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem 1rem;
+  border: 1px dashed rgba(197, 160, 89, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.015);
+  text-align: left;
+}
+
+.my-empty-icon {
+  color: var(--color-gold);
+  flex-shrink: 0;
+}
+
+.my-empty-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.my-empty-title {
+  font-weight: 600;
+  color: var(--color-text-title);
+  font-size: 0.95rem;
+}
+
+.my-empty-sub {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  max-width: 480px;
+}
+
+/* ─── Claim card ────────────────────────────────────────────────────────────── */
+.my-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border-left: 3px solid var(--color-gold);
+}
+
+.my-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.my-card-id-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.my-card-code-label {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-text-muted);
+}
+
+.my-card-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--color-gold-light);
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.my-card-code:hover {
+  text-shadow: 0 0 10px rgba(197, 160, 89, 0.5);
+}
+
+.my-card-code svg {
+  color: var(--color-text-muted);
+}
+
+.my-card-status-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
+.my-card-nickname {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.my-card-nickname svg {
+  color: var(--color-gold);
+}
+
+/* Status badge */
+.my-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.22rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  border: 1px solid transparent;
+}
+
+.my-status-pending {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: var(--color-warning);
+}
+
+.my-status-confirmed {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+}
+
+.my-status-completed {
+  background: var(--color-success-bg);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: var(--color-success);
+}
+
+.my-status-cancelled {
+  background: rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.35);
+  color: var(--color-text-muted);
+}
+
+/* Stepper */
+.my-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+
+.my-step-item {
+  display: flex;
+  align-items: center;
+}
+
+.my-step-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.my-step-pill.is-done {
+  color: var(--color-success);
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.my-step-pill.is-current {
+  color: var(--color-gold-light);
+  border-color: var(--color-gold);
+  background: rgba(197, 160, 89, 0.12);
+  box-shadow: 0 0 10px rgba(197, 160, 89, 0.25);
+}
+
+.my-step-connector {
+  width: 26px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0 0.3rem;
+}
+
+.my-step-connector.is-active {
+  background: rgba(16, 185, 129, 0.5);
+}
+
+.my-cancelled-note {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  padding: 0.4rem 0;
+}
+
+.my-cancelled-note svg {
+  color: var(--color-error);
+}
+
+/* Items */
+.my-items {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(197, 160, 89, 0.15);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.my-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.85rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.my-item-row + .my-item-row {
+  border-top: 1px solid rgba(197, 160, 89, 0.12);
+}
+
+.my-item-name-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.my-item-name {
+  color: var(--color-text-title);
+  font-weight: 600;
+  font-size: 0.86rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-item-unit {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.my-item-total {
+  font-family: var(--font-title);
+  color: var(--color-gold-light);
+  font-weight: 700;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.my-coin {
+  width: 12px;
+  height: 12px;
+  font-size: 8px;
+}
+
+.my-coin-lg {
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+}
+
+/* Pricing */
+.my-pricing {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.8rem 1rem;
+  background: rgba(197, 160, 89, 0.05);
+  border: 1px solid rgba(197, 160, 89, 0.2);
+  border-radius: 6px;
+}
+
+.my-pricing-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.my-pricing-row.is-bonus {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.my-pricing-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.2rem;
+}
+
+.my-pricing-total-label {
+  font-family: var(--font-title);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-gold-light);
+}
+
+.my-pricing-amount {
+  font-size: 1.45rem;
+  text-shadow: 0 0 12px rgba(197, 160, 89, 0.3);
+}
+
+/* Meta */
+.my-meta {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.my-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.my-meta-label {
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+}
+
+.my-meta-value {
+  font-size: 0.78rem;
+  color: var(--color-text-main);
+}
+
+/* Actions */
+.my-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.my-actions-note {
+  flex: 1;
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+  min-width: 200px;
+}
+
+.my-actions-note.is-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-success);
+}
+
+.my-complete-btn {
+  background: linear-gradient(180deg, #10b981 0%, #047857 100%);
+  border-color: #065f46;
+  color: #fff;
+}
+
+.my-cancel-btn {
+  margin-left: auto;
+}
+
+/* ─── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .my-lookup-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .my-track-btn {
+    width: 100%;
+  }
+
+  .my-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .my-cancel-btn {
+    margin-left: 0;
+  }
+
+  .my-cancel-btn,
+  .my-complete-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .my-meta {
+    gap: 1rem;
+  }
+}

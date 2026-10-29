@@ -9,7 +9,7 @@ import {
   Clock,
   Zap,
   CheckCircle,
-  Calculator,
+  Package,
 } from 'lucide-react';
 import {
   fetchCrafterDiscounts,
@@ -23,7 +23,8 @@ import {
   ApiPriceEntry,
   ApiPriceSettings,
 } from '../api/types';
-import MaterialsCalculator, { CalculatorItem } from './MaterialsCalculator';
+import ClaimCrafts, { ClaimItem } from './ClaimCrafts';
+import MyClaims from './MyClaims';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import './ForCrafters.css';
 
@@ -69,7 +70,8 @@ export default function ForCrafters() {
   const [filter, setFilter] = useState<'all' | 'needs_crafting'>('all');
   const [sortField, setSortField] = useState<SortField>('remaining');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [showCalculator, setShowCalculator] = useState(false);
+  const [openPanel, setOpenPanel] = useState<'claim' | 'my' | null>(null);
+  const [myClaimsCode, setMyClaimsCode] = useState<string | null>(null);
 
   const fetchData = useCallback(async (bypassCache = false) => {
     setLoading(true);
@@ -176,8 +178,8 @@ export default function ForCrafters() {
   const filteredGrandTotal = sortedItems.reduce((s, i) => s + i.totalPrice, 0);
   const fullyClaimedCount = rows.filter((r) => r.remaining <= 0).length;
 
-  // Feed for the payout calculator — every known material with its live price
-  const calculatorItems = useMemo<CalculatorItem[]>(
+  // Feed for the claim form — every known material with its live price
+  const claimItems = useMemo<ClaimItem[]>(
     () =>
       rows.map((r) => ({
         id: r.id,
@@ -187,6 +189,11 @@ export default function ForCrafters() {
       })),
     [rows]
   );
+
+  const handleClaimCreated = (code: string) => {
+    setMyClaimsCode(code);
+    setOpenPanel('my');
+  };
 
   return (
     <div className="fade-in fc-page">
@@ -210,11 +217,19 @@ export default function ForCrafters() {
         <div className="fc-header-actions">
           <button
             type="button"
-            className={`ff-btn fc-calc-btn glow-active ${showCalculator ? 'is-open' : ''}`}
-            onClick={() => setShowCalculator((v) => !v)}
+            className={`ff-btn fc-calc-btn glow-active ${openPanel === 'claim' ? 'is-open' : ''}`}
+            onClick={() => setOpenPanel((p) => (p === 'claim' ? null : 'claim'))}
           >
-            <Calculator size={14} />
-            {showCalculator ? 'Hide Calculator' : 'Calculate Payout'}
+            <Hammer size={14} />
+            {openPanel === 'claim' ? 'Hide Claim Form' : 'Claim Some Crafts'}
+          </button>
+          <button
+            type="button"
+            className={`ff-btn-secondary fc-calc-btn ${openPanel === 'my' ? 'is-open' : ''}`}
+            onClick={() => setOpenPanel((p) => (p === 'my' ? null : 'my'))}
+          >
+            <Package size={14} />
+            {openPanel === 'my' ? 'Hide My Claims' : 'My Claims'}
           </button>
           <button
             type="button"
@@ -267,22 +282,32 @@ export default function ForCrafters() {
             <div>
               <h4 className="fc-cta-title">Want to take a craft?</h4>
               <p className="fc-cta-sub">
-                Let me know what you want to craft and the amount, and I will claim it for you!
+                Hit <strong>Claim Some Crafts</strong>, pick what you will deliver and send the
+                request — then DM the claim code to me for a quick confirmation!
               </p>
             </div>
           </div>
           <div className="fc-cta-handle">
-            <span>DM me in discord!</span>
+            <span>Questions or the code?</span>
             <span className="fc-cta-handle-name">@Alamai</span>
           </div>
         </div>
       </div>
 
-      {showCalculator && (
-        <MaterialsCalculator
-          items={calculatorItems}
+      {openPanel === 'claim' && (
+        <ClaimCrafts
+          items={claimItems}
           bonusTiers={bonusTiers}
-          onClose={() => setShowCalculator(false)}
+          onClose={() => setOpenPanel(null)}
+          onClaimed={handleClaimCreated}
+        />
+      )}
+
+      {openPanel === 'my' && (
+        <MyClaims
+          key={myClaimsCode ?? 'manual'}
+          initialCode={myClaimsCode ?? undefined}
+          onClose={() => setOpenPanel(null)}
         />
       )}
 

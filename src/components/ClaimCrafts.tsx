@@ -1,22 +1,24 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import {
-  Calculator,
   Check,
   Copy,
   Hammer,
   Minus,
   Plus,
   Search,
+  Send,
   Sparkles,
   Tag,
   Trash2,
   X,
 } from 'lucide-react';
 import { formatNumber } from '../utils/format';
-import type { ApiCrafterDiscount } from '../api/types';
+import { submitClaim } from '../api/endpoints';
+import type { ApiCraftClaim, ApiCrafterDiscount } from '../api/types';
 import './MaterialsCalculator.css';
+import './ClaimCrafts.css';
 
-export interface CalculatorItem {
+export interface ClaimItem {
   id: string;
   name: string;
   /** Effective per-unit price from the live price feed (null = unpriced). */
@@ -69,15 +71,18 @@ function highlight(name: string, query: string) {
   );
 }
 
-export default function MaterialsCalculator({
+export default function ClaimCrafts({
   items,
   bonusTiers = [],
   onClose,
+  onClaimed,
 }: {
-  items: CalculatorItem[];
-  /** Bulk bonus tiers from the backend — supplying more items yields a higher payout. */
+  items: ClaimItem[];
+  /** Bulk bonus tiers from the backend — claiming more items yields a higher payout. */
   bonusTiers?: ApiCrafterDiscount[];
   onClose: () => void;
+  /** Called after a claim is submitted — switches the user to "My Claims". */
+  onClaimed: (code: string) => void;
 }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [query, setQuery] = useState('');
@@ -85,6 +90,10 @@ export default function MaterialsCalculator({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [rawActiveIndex, setActiveIndex] = useState(0);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
+  const [nickname, setNickname] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [submitted, setSubmitted] = useState<ApiCraftClaim | null>(null);
   const [copied, setCopied] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -108,7 +117,7 @@ export default function MaterialsCalculator({
     Math.max(0, suggestions.length - 1)
   );
 
-  const addEntry = (item: CalculatorItem, quantity: number) => {
+  const addEntry = (item: ClaimItem, quantity: number) => {
     const safeQty = Math.max(1, Math.floor(quantity) || 1);
     setEntries((prev) => {
       const existing = prev.find((e) => e.id === item.id);
@@ -124,7 +133,7 @@ export default function MaterialsCalculator({
     searchRef.current?.focus();
   };
 
-  const handleAddFromDropdown = (item: CalculatorItem) => {
+  const handleAddFromDropdown = (item: ClaimItem) => {
     addEntry(item, qty);
     setQuery('');
     setDropdownOpen(true);
@@ -163,7 +172,7 @@ export default function MaterialsCalculator({
 
   const priced = entries
     .map((e) => ({ entry: e, item: itemsById.get(e.id) }))
-    .filter((x): x is { entry: Entry; item: CalculatorItem } => x.item !== undefined);
+    .filter((x): x is { entry: Entry; item: ClaimItem } => x.item !== undefined);
   const totalPayout = priced.reduce(
     (sum, { entry, item }) => sum + (item.unitPrice ? item.unitPrice * entry.qty : 0),
     0
@@ -183,44 +192,123 @@ export default function MaterialsCalculator({
   const finalPayout = totalPayout + bonusAmount;
   const animatedTotal = useCountUp(finalPayout);
 
-  const handleCopy = () => {
-    if (priced.length === 0) return;
-    const lines = priced.map(
-      ({ entry, item }) =>
-        `• ${item.name} ×${formatNumber(entry.qty)} — ${
-          item.unitPrice ? `${formatNumber(item.unitPrice * entry.qty)} G` : 'price TBD'
-        }`
-    );
-    const text = [
-      'Materials offer:',
-      ...lines,
-      ...(activeBonus
-        ? [
-            `Subtotal: ${formatNumber(totalPayout)} G`,
-            `Bulk bonus (${bonusPct}%): +${formatNumber(bonusAmount)} G`,
-          ]
-        : []),
-      `Total: ${formatNumber(finalPayout)} G`,
-    ].join('\n');
-    navigator.clipboard.writeText(text).then(() => {
+  const canSubmit =
+    entries.length > 0 && nickname.trim().length > 0 && !submitting;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const claim = await submitClaim({
+        nickname: nickname.trim(),
+        items: entries.map((e) => ({ materialId: e.id, quantity: e.qty })),
+      });
+      setSubmitted(claim);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to submit the claim. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCopyCode = () => {
+    if (!submitted) return;
+    navigator.clipboard.writeText(submitted.claimCode).then(() => {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     });
   };
 
+  const resetForm = () => {
+    setEntries([]);
+    setNickname('');
+    setError('');
+    setSubmitted(null);
+  };
+
   const activeItem = suggestions[activeIndex];
 
+  // ─── Success view ───────────────────────────────────────────────────────────
+  if (submitted) {
+    return (
+      <div className="ff-card-framed mc-card cc-card fade-in">
+        <div className="cc-success">
+          <div className="cc-success-icon">
+            <Check size={34} />
+          </div>
+          <h3 className="cc-success-title">Claim Request Sent!</h3>
+          <p className="cc-success-sub">
+            The workshop will review your claim. Its status will change in{' '}
+            <strong>My Claims</strong> once it is confirmed.
+          </p>
+
+          <div className="cc-success-code-block">
+            <span className="cc-success-code-label">Your Claim Code</span>
+            <button
+              type="button"
+              className="cc-success-code-btn"
+              onClick={handleCopyCode}
+              title="Click to copy"
+            >
+              {submitted.claimCode}
+              {copied ? <Check size={18} /> : <Copy size={18} />}
+            </button>
+            <span className="cc-success-hint">
+              Save this code — it is the only way to track and manage your claim.
+              Sending it to <strong>@Alamai</strong> on Discord speeds up the confirmation!
+            </span>
+          </div>
+
+          <div className="cc-success-payout">
+            <span className="cc-success-payout-label">Payout</span>
+            <span className="gil-price cc-success-payout-amount">
+              <span>{formatNumber(submitted.total)}</span>
+              <span className="gil-coin mc-coin-lg">G</span>
+            </span>
+            {Number(submitted.bonusPct) > 0 && (
+              <span className="cc-success-payout-meta">
+                incl. +{Number(submitted.bonusPct)}% bulk bonus
+              </span>
+            )}
+            {unpricedCount > 0 && (
+              <span className="cc-success-payout-meta">
+                final total will be confirmed by @Alamai
+              </span>
+            )}
+          </div>
+
+          <div className="cc-success-actions">
+            <button
+              type="button"
+              className="ff-btn"
+              onClick={() => onClaimed(submitted.claimCode)}
+            >
+              <Hammer size={14} />
+              View My Claims
+            </button>
+            <button type="button" className="ff-btn-secondary" onClick={resetForm}>
+              Make Another Claim
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Claim form ─────────────────────────────────────────────────────────────
   return (
     <div className="ff-card-framed mc-card fade-in">
       <div className="mc-header">
         <div className="mc-header-lead">
           <div className="mc-header-icon">
-            <Calculator size={20} />
+            <Hammer size={20} />
           </div>
           <div>
-            <h3 className="mc-title">Payout Calculator</h3>
+            <h3 className="mc-title">Claim Some Crafts</h3>
             <p className="mc-sub">
-              Add what you can craft or deliver — see what it's worth instantly, no mental math.
+              Pick what you will craft or deliver and send a claim request — the workshop
+              confirms it, then you craft and get paid.
             </p>
           </div>
         </div>
@@ -228,7 +316,7 @@ export default function MaterialsCalculator({
           type="button"
           className="ff-btn-secondary mc-close-btn"
           onClick={onClose}
-          title="Hide calculator"
+          title="Hide the claim form"
         >
           <X size={14} />
         </button>
@@ -341,7 +429,6 @@ export default function MaterialsCalculator({
             Fill need
           </button>
         </div>
-
       </div>
 
       {/* Entries */}
@@ -350,7 +437,7 @@ export default function MaterialsCalculator({
           <Sparkles size={22} />
           <span className="mc-empty-title">Nothing added yet</span>
           <span className="mc-empty-sub">
-            Search above and hit Enter — your payout adds up live down here.
+            Search above and hit Enter — your claim and its payout add up live down here.
           </span>
         </div>
       ) : (
@@ -488,27 +575,62 @@ export default function MaterialsCalculator({
                 ` · ${unpricedCount} without price — final total confirmed by @Alamai`}
             </span>
           </div>
-          <div className="mc-footer-actions">
-            <button
-              type="button"
-              className={`ff-btn ${copied ? 'mc-copied-btn' : ''}`}
-              onClick={handleCopy}
-              disabled={priced.length === 0}
-            >
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-              {copied ? 'Copied!' : 'Copy for Discord'}
-            </button>
-            <button
-              type="button"
-              className="ff-btn-secondary mc-clear-btn"
-              onClick={() => setEntries([])}
-            >
-              <Trash2 size={14} />
-              Clear
-            </button>
-          </div>
         </div>
       )}
+
+      {/* Nickname + submit */}
+      <div className="cc-submit">
+        {error && (
+          <div className="ff-alert ff-alert-warning cc-alert">
+            <X size={14} />
+            <span>{error}</span>
+          </div>
+        )}
+        <div className="form-group cc-nickname-group">
+          <label className="form-label cc-nickname-label" htmlFor="cc-nickname">
+            Your Nickname <span className="cc-required">*</span>
+          </label>
+          <input
+            id="cc-nickname"
+            type="text"
+            className="form-input cc-nickname-input"
+            placeholder="e.g. cobalt_king"
+            value={nickname}
+            maxLength={60}
+            onChange={(e) => setNickname(e.target.value)}
+            autoComplete="off"
+          />
+          <span className="cc-nickname-hint">
+            Used to show who claimed what on the shopping list. Just copy your Discord
+            username from any chat — that's all we need!
+          </span>
+        </div>
+        <div className="cc-submit-actions">
+          <button
+            type="button"
+            className="ff-btn cc-submit-btn"
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            title={
+              entries.length === 0
+                ? 'Add at least one material first'
+                : 'Send the claim request to the workshop'
+            }
+          >
+            {submitting ? <Sparkles size={14} className="spin" /> : <Send size={14} />}
+            {submitting ? 'Sending…' : 'Send Claim Request'}
+          </button>
+          <button
+            type="button"
+            className="ff-btn-secondary mc-clear-btn"
+            onClick={resetForm}
+            disabled={submitting}
+          >
+            <Trash2 size={14} />
+            Clear
+          </button>
+        </div>
+      </div>
 
       {/* Bulk bonus guide */}
       {bonusTiers.length > 0 && (

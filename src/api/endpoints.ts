@@ -2,12 +2,14 @@ import { apiGet, apiPost } from './client';
 import {
   ApiAboutStats,
   ApiCrafterDiscount,
+  ApiCraftClaim,
   ApiDiscount,
   ApiMissingMaterial,
   ApiOrder,
   ApiPriceEntry,
   ApiPriceSettings,
   ApiSubmarinePart,
+  CreateCraftClaimDto,
   CreateOrderDto,
   InProgressOrder,
   PromoCodeValidation,
@@ -114,6 +116,31 @@ export async function fetchMissingMaterials(bypassCache = false): Promise<ApiMis
   const items = res.items ?? [];
   setCache(CACHE_KEY_MISSING, items);
   return items;
+}
+
+// ─── Craft claims ─────────────────────────────────────────────────────────────
+
+/** Submits a claim request and returns the created claim incl. its code. */
+export function submitClaim(dto: CreateCraftClaimDto): Promise<ApiCraftClaim> {
+  return apiPost<ApiCraftClaim>('/inventory/claims', dto);
+}
+
+/** Looks up a claim by its code, e.g. "CLM-7K9P-A2BC-DEF3". */
+export function lookupClaim(code: string): Promise<ApiCraftClaim> {
+  const normalized = encodeURIComponent(code.trim().toUpperCase());
+  return apiGet<ApiCraftClaim>(`/inventory/claims/lookup/${normalized}`);
+}
+
+/** Cancels your own claim by code (allowed while pending or confirmed). */
+export function cancelClaim(code: string): Promise<ApiCraftClaim> {
+  const normalized = encodeURIComponent(code.trim().toUpperCase());
+  return apiPost<ApiCraftClaim>(`/inventory/claims/${normalized}/cancel`, {});
+}
+
+/** Marks a confirmed claim as completed by code. */
+export function completeClaim(code: string): Promise<ApiCraftClaim> {
+  const normalized = encodeURIComponent(code.trim().toUpperCase());
+  return apiPost<ApiCraftClaim>(`/inventory/claims/${normalized}/complete`, {});
 }
 
 // ─── Prices ───────────────────────────────────────────────────────────────────

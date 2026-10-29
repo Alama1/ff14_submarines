@@ -153,6 +153,40 @@ export interface InProgressOrder {
   }>;
 }
 
+// ─── Craft claims (inventory service) ────────────────────────────────────────
+
+export type CraftClaimStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+
+export interface ApiCraftClaimItem {
+  id: number;
+  materialId: string | null;
+  materialName: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface ApiCraftClaim {
+  id: string;
+  claimCode: string;
+  nickname: string;
+  status: CraftClaimStatus;
+  subtotal: number;
+  bonusPct: number | string;
+  bonusAmount: number;
+  total: number;
+  confirmedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: ApiCraftClaimItem[];
+}
+
+export interface CreateCraftClaimDto {
+  nickname: string;
+  items: Array<{ materialId: string; quantity: number }>;
+}
+
 // ─── Inventory service ────────────────────────────────────────────────────────
 
 export interface ApiClaim {

@@ -1,0 +1,194 @@
+/* ─── Claim Crafts card — additions on top of MaterialsCalculator.css ───────── */
+.cc-card {
+  border-left-color: var(--color-success);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(21, 31, 51, 0.4) 100%);
+}
+
+.cc-card .mc-header-icon {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: var(--color-success);
+}
+
+/* ─── Success view ──────────────────────────────────────────────────────────── */
+.cc-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.5rem 0.5rem;
+  text-align: center;
+}
+
+.cc-success-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-success-bg);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: var(--color-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.25);
+}
+
+.cc-success-title {
+  font-size: 1.15rem;
+  margin: 0.2rem 0 0 0;
+}
+
+.cc-success-sub {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  max-width: 420px;
+  margin: 0;
+}
+
+.cc-success-sub strong {
+  color: var(--color-gold);
+}
+
+.cc-success-code-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.6rem 0;
+}
+
+.cc-success-code-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-text-muted);
+}
+
+.cc-success-code-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(197, 160, 89, 0.08);
+  border: 1px dashed var(--color-gold);
+  border-radius: 6px;
+  color: var(--color-gold-light);
+  font-family: var(--font-title);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cc-success-code-btn:hover {
+  background: rgba(197, 160, 89, 0.16);
+  box-shadow: 0 0 14px rgba(197, 160, 89, 0.3);
+}
+
+.cc-success-hint {
+  font-size: 0.74rem;
+  color: var(--color-text-muted);
+  max-width: 420px;
+}
+
+.cc-success-hint strong {
+  color: var(--color-gold);
+}
+
+.cc-success-payout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.7rem 1.4rem;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.cc-success-payout-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-text-muted);
+}
+
+.cc-success-payout-amount {
+  font-size: 1.45rem;
+}
+
+.cc-success-payout-meta {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.cc-success-actions {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 0.4rem;
+}
+
+/* ─── Nickname + submit ─────────────────────────────────────────────────────── */
+.cc-submit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 6px;
+}
+
+.cc-alert {
+  align-items: flex-start;
+}
+
+.cc-nickname-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+}
+
+.cc-nickname-label {
+  margin: 0;
+}
+
+.cc-required {
+  color: var(--color-error);
+}
+
+.cc-nickname-input {
+  max-width: 340px;
+}
+
+.cc-nickname-hint {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  max-width: 460px;
+}
+
+.cc-submit-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.cc-submit-btn {
+  flex: 0 0 auto;
+}
+
+/* ─── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .cc-nickname-input {
+    max-width: 100%;
+  }
+
+  .cc-submit-actions .ff-btn,
+  .cc-submit-actions .ff-btn-secondary {
+    flex: 1;
+  }
+}
