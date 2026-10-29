@@ -218,7 +218,7 @@ function OrderSubmitForm({
   const handleSubmit = async () => {
     setError('');
     if (!form.clientName.trim()) {
-      setError('Please enter your character or Discord name.');
+      setError('Please enter your Discord name.');
       return;
     }
     if (form.fulfillmentType === 'date' && !form.fulfillmentDate) {
@@ -297,7 +297,7 @@ function OrderSubmitForm({
 
       <div className="sb-form-grid">
         <div className="form-group sb-form-group">
-          <label className="form-label sb-label-sm">Character / Discord Name *</label>
+          <label className="form-label sb-label-sm">Discord Name *</label>
           <input
             type="text"
             className="form-input"
@@ -308,11 +308,11 @@ function OrderSubmitForm({
           />
         </div>
         <div className="form-group sb-form-group">
-          <label className="form-label sb-label-sm">Discord Contact (optional)</label>
+          <label className="form-label sb-label-sm">Character Name (optional)</label>
           <input
             type="text"
             className="form-input"
-            placeholder="e.g. alamai"
+            placeholder="e.g. Alamai Character"
             value={form.contactInfo}
             onChange={(e) => setForm({ ...form, contactInfo: e.target.value })}
             maxLength={100}
