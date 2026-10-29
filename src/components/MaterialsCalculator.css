@@ -371,6 +371,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+.mc-stack-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-gold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .mc-entry-qty {
   display: flex;
   align-items: center;

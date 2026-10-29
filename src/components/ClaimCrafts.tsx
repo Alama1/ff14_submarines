@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import {
+  Boxes,
   Check,
   Hammer,
   Minus,
@@ -56,6 +57,19 @@ function useCountUp(target: number, duration = 500): number {
   return display;
 }
 
+/** FF14 max stack size. */
+const STACK_SIZE = 999;
+
+/** "1 stack + 101" for 1100 — only meaningful once a full stack is reached. */
+function stackLabel(qty: number): string | null {
+  if (qty < STACK_SIZE) return null;
+  const stacks = Math.floor(qty / STACK_SIZE);
+  const rem = qty % STACK_SIZE;
+  return rem > 0
+    ? `${stacks} stack${stacks !== 1 ? 's' : ''} + ${rem}`
+    : `${stacks} stack${stacks !== 1 ? 's' : ''}`;
+}
+
 function highlight(name: string, query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return name;
@@ -85,7 +99,6 @@ export default function ClaimCrafts({
 }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [query, setQuery] = useState('');
-  const [qty, setQty] = useState(1);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [rawActiveIndex, setActiveIndex] = useState(0);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
@@ -132,7 +145,7 @@ export default function ClaimCrafts({
   };
 
   const handleAddFromDropdown = (item: ClaimItem) => {
-    addEntry(item, qty);
+    addEntry(item, 1);
     setQuery('');
     setDropdownOpen(true);
   };
@@ -150,6 +163,13 @@ export default function ClaimCrafts({
   };
 
   const removeEntry = (id: string) => setEntries((prev) => prev.filter((e) => e.id !== id));
+
+  /** Rounds every entry up to full stacks of 999 (e.g. 1200 -> 1998). */
+  const roundUpToStacks = () => {
+    setEntries((prev) =>
+      prev.map((e) => ({ ...e, qty: Math.ceil(e.qty / STACK_SIZE) * STACK_SIZE }))
+    );
+  };
 
   const handleSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
@@ -216,8 +236,6 @@ export default function ClaimCrafts({
     setError('');
     setSubmitted(null);
   };
-
-  const activeItem = suggestions[activeIndex];
 
   // ─── Success view ───────────────────────────────────────────────────────────
   if (submitted) {
@@ -370,46 +388,8 @@ export default function ClaimCrafts({
               </div>
             )}
           </div>
-
-          <div className="mc-qty-control">
-            <button
-              type="button"
-              className="ff-btn-secondary mc-qty-btn"
-              onClick={() => setQty((q) => Math.max(1, q - 1))}
-              title="Decrease quantity"
-            >
-              <Minus size={12} />
-            </button>
-            <input
-              type="number"
-              className="mc-qty-input"
-              min="1"
-              value={qty}
-              onChange={(e) => setQty(Math.max(1, Math.floor(parseInt(e.target.value, 10)) || 1))}
-              aria-label="Quantity"
-            />
-            <button
-              type="button"
-              className="ff-btn-secondary mc-qty-btn"
-              onClick={() => setQty((q) => q + 1)}
-              title="Increase quantity"
-            >
-              <Plus size={12} />
-            </button>
-          </div>
-
-          <button
-            type="button"
-            className="ff-btn mc-fill-btn"
-            disabled={!activeItem || activeItem.remaining <= 0}
-            onClick={() => activeItem && setQty(activeItem.remaining)}
-            title="Set quantity to the full amount the workshop still needs"
-          >
-            Fill need
-          </button>
         </div>
       </div>
-
       {/* Entries */}
       {entries.length === 0 ? (
         <div className="mc-empty">
@@ -437,6 +417,10 @@ export default function ClaimCrafts({
                       @ {item.unitPrice ? `${formatNumber(item.unitPrice)} G` : 'price TBD'}
                     </span>
                   </div>
+
+                  <span className="mc-stack-label" title="FF14 stack size is 999">
+                    {stackLabel(entry.qty)}
+                  </span>
 
                   <div className="mc-entry-qty">
                     <button
@@ -573,7 +557,7 @@ export default function ClaimCrafts({
             id="cc-nickname"
             type="text"
             className="form-input cc-nickname-input"
-            placeholder="e.g. cobalt_king"
+            placeholder="e.g. Alamai"
             value={nickname}
             maxLength={60}
             onChange={(e) => setNickname(e.target.value)}
@@ -598,6 +582,16 @@ export default function ClaimCrafts({
           >
             {submitting ? <Sparkles size={14} className="spin" /> : <Send size={14} />}
             {submitting ? 'Sending…' : 'Send Claim Request'}
+          </button>
+          <button
+            type="button"
+            className="ff-btn-secondary"
+            onClick={roundUpToStacks}
+            disabled={entries.length === 0 || submitting}
+            title="Round every material up to full stacks of 999"
+          >
+            <Boxes size={14} />
+            Round Up to Stacks
           </button>
           <button
             type="button"

@@ -203,16 +203,6 @@ export default function ForCrafters() {
           <h2 className="fc-header-title">
             <Wrench size={22} /> Crafters Shopping List
           </h2>
-          <p className="fc-header-sub">
-            Materials the workshop needs from the Market Board or from crafting — live from the
-            Alamai stock system.
-            {settings?.world && (
-              <>
-                {' '}
-                Prices tracked on <strong>{settings.world}</strong>.
-              </>
-            )}
-          </p>
         </div>
         <div className="fc-header-actions">
           <button
@@ -283,12 +273,12 @@ export default function ForCrafters() {
               <h4 className="fc-cta-title">Want to take a craft?</h4>
               <p className="fc-cta-sub">
                 Hit <strong>Claim Some Crafts</strong>, pick what you will deliver and send the
-                request — then DM the claim code to me for a quick confirmation!
+                request — then poke me in Discord for a quick confirmation!
               </p>
             </div>
           </div>
           <div className="fc-cta-handle">
-            <span>Questions or the code?</span>
+            <span>Any questions? DM</span>
             <span className="fc-cta-handle-name">@Alamai</span>
           </div>
         </div>

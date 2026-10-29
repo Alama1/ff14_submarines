@@ -305,8 +305,7 @@ export default function MyClaims({
             <Hammer size={18} /> My Claims
           </h3>
           <p className="my-panel-sub">
-            Enter the claim code you received when submitting your claim to check its status,
-            cancel it or mark it as completed.
+            Can't see or accidentally deleted the wrond claim? DM me and I will send you your code :3 
           </p>
         </div>
         <button
