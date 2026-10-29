@@ -49,53 +49,6 @@
   color: var(--color-gold);
 }
 
-.cc-success-code-block {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.45rem;
-  margin: 0.6rem 0;
-}
-
-.cc-success-code-label {
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--color-text-muted);
-}
-
-.cc-success-code-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  background: rgba(197, 160, 89, 0.08);
-  border: 1px dashed var(--color-gold);
-  border-radius: 6px;
-  color: var(--color-gold-light);
-  font-family: var(--font-title);
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  padding: 0.6rem 1.2rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.cc-success-code-btn:hover {
-  background: rgba(197, 160, 89, 0.16);
-  box-shadow: 0 0 14px rgba(197, 160, 89, 0.3);
-}
-
-.cc-success-hint {
-  font-size: 0.74rem;
-  color: var(--color-text-muted);
-  max-width: 420px;
-}
-
-.cc-success-hint strong {
-  color: var(--color-gold);
-}
-
 .cc-success-payout {
   display: flex;
   flex-direction: column;
@@ -121,6 +74,13 @@
 .cc-success-payout-meta {
   font-size: 0.72rem;
   color: var(--color-text-muted);
+}
+
+.cc-mistake-note {
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+  max-width: 440px;
+  margin: 0;
 }
 
 .cc-success-actions {

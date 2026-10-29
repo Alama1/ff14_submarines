@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import {
   Check,
-  Copy,
   Hammer,
   Minus,
   Plus,
@@ -94,7 +93,6 @@ export default function ClaimCrafts({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState<ApiCraftClaim | null>(null);
-  const [copied, setCopied] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const itemsById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
@@ -212,14 +210,6 @@ export default function ClaimCrafts({
     }
   };
 
-  const handleCopyCode = () => {
-    if (!submitted) return;
-    navigator.clipboard.writeText(submitted.claimCode).then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    });
-  };
-
   const resetForm = () => {
     setEntries([]);
     setNickname('');
@@ -239,26 +229,10 @@ export default function ClaimCrafts({
           </div>
           <h3 className="cc-success-title">Claim Request Sent!</h3>
           <p className="cc-success-sub">
-            The workshop will review your claim. Its status will change in{' '}
-            <strong>My Claims</strong> once it is confirmed.
+            Your claim has been received. Poke <strong>@Alamai</strong> in Discord to get it
+            confirmed — you can track and manage all your claims in{' '}
+            <strong>My Claims</strong>.
           </p>
-
-          <div className="cc-success-code-block">
-            <span className="cc-success-code-label">Your Claim Code</span>
-            <button
-              type="button"
-              className="cc-success-code-btn"
-              onClick={handleCopyCode}
-              title="Click to copy"
-            >
-              {submitted.claimCode}
-              {copied ? <Check size={18} /> : <Copy size={18} />}
-            </button>
-            <span className="cc-success-hint">
-              Save this code — it is the only way to track and manage your claim.
-              Sending it to <strong>@Alamai</strong> on Discord speeds up the confirmation!
-            </span>
-          </div>
 
           <div className="cc-success-payout">
             <span className="cc-success-payout-label">Payout</span>
@@ -277,6 +251,11 @@ export default function ClaimCrafts({
               </span>
             )}
           </div>
+
+          <p className="cc-mistake-note">
+            Made a mistake in the claim? No worries — just cancel it in My Claims and make a
+            new one.
+          </p>
 
           <div className="cc-success-actions">
             <button
