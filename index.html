@@ -87,9 +87,10 @@
     </script>
 
     <style>
-      .seo-content { max-width: 820px; margin: 0 auto; padding: 28px 20px 56px; font-size: 14px; line-height: 1.65; color: var(--color-text-muted, #9ca3af); }
+      .seo-content { max-width: 820px; margin: 0 auto; padding: 10px 20px 40px; font-size: 14px; line-height: 1.65; color: var(--color-text-muted, #9ca3af); }
+      .seo-content summary { cursor: pointer; color: var(--color-gold, #c5a059); font-weight: 600; list-style-position: inside; }
+      .seo-content summary:hover { color: var(--color-gold-light, #f3d492); }
       .seo-content h2, .seo-content h3 { color: var(--color-gold, #c5a059); margin: 24px 0 8px; font-size: 17px; }
-      .seo-content h2:first-child { margin-top: 0; }
       .seo-content p { margin: 8px 0; }
       .seo-content ul { padding-left: 22px; margin: 8px 0; }
       .seo-content li { margin: 4px 0; }
@@ -101,7 +102,9 @@
 
     <!-- Static crawlable copy: this is what Google reads before JS renders the app -->
     <section class="seo-content">
-      <h2>Buy FF14 submarine parts — WSUC, SSSS &amp; custom submarine sets</h2>
+      <!-- shortcut: closed accordion = one visible line, full text still in HTML for crawlers; open by default if users want it more -->
+      <details>
+      <summary>Buy FF14 submarine parts — WSUC, SSSS &amp; custom submarine sets · FAQ</summary>
       <p>
         Alamai Submarines is an FF14 / FFXIV submarine parts shop: pick any
         <strong>hull, stern, bow or bridge</strong>, build a <strong>submarine set</strong> — from
@@ -126,6 +129,7 @@
       <p>Popular submarine builds in FFXIV include WSUC (Whale-class) and SSSS (Shark-class) configurations. Use our Set Builder tool at submarines.alamai.dev to compare different part combinations, see stats, and calculate total costs for your ideal submarine build.</p>
       <h3>What is a submarine set builder for FF14?</h3>
       <p>A submarine set builder is a tool that lets you pick individual submarine parts (hull, stern, bow, bridge) and see the total stats, price, and availability. Alamai Submarines offers a free set builder with live pricing and stock levels.</p>
+      </details>
     </section>
 
     <script src="/env.js"></script>
