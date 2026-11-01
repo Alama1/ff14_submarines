@@ -23,9 +23,16 @@ export function computeCommittedMaterials(
       const recipe = partsById[item.partId];
       if (!recipe?.materials?.length) return;
 
+      // Delivered units already consumed their materials from stock, and
+      // units covered by finished part stock need none — commit only the
+      // units that still have to be crafted.
+      const remaining = item.remaining ?? item.quantity;
+      const toCraft = Math.max(0, remaining - Math.max(0, item.stock ?? 0));
+      if (toCraft <= 0) return;
+
       recipe.materials.forEach((mat) => {
         committed[mat.material.id] =
-          (committed[mat.material.id] ?? 0) + mat.quantity * item.quantity;
+          (committed[mat.material.id] ?? 0) + mat.quantity * toCraft;
       });
     });
   });

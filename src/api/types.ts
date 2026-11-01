@@ -147,6 +147,10 @@ export interface InProgressOrder {
     partType: string | null;
     buildName: string | null;
     quantity: number;
+    /** Optional: absent from localStorage snapshots cached before this field existed. */
+    deliveredQuantity?: number;
+    /** quantity − deliveredQuantity — units still owed by the build. */
+    remaining?: number;
     stock: number;
     unitPrice: number;
     lineTotal: number;
