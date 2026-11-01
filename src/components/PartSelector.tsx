@@ -85,9 +85,7 @@ export default function PartSelector({
     totalAvailable > 0 &&
     totalAvailable < quantity;
   const shortageTooltip = craftability.bottlenecks.length
-    ? `Missing for ${formatNumber(quantity)}×: ${craftability.bottlenecks
-        .map((b) => `${b.name} (${formatNumber(b.missing)} more)`)
-        .join(', ')}`
+    ? 'Some ingredients are still being sourced for this part — delivery is still guaranteed.'
     : undefined;
 
   return (

@@ -766,48 +766,6 @@
   line-height: 1.5;
 }
 
-/* Missing-material chips inside the availability banner */
-.sb-shortfall-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.35rem;
-}
-
-.sb-shortfall-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.18rem 0.55rem;
-  border-radius: 3px;
-  font-size: 0.72rem;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  color: var(--color-text-main);
-  white-space: nowrap;
-}
-
-.sb-shortfall-chip strong {
-  color: #f87171;
-  font-variant-numeric: tabular-nums;
-}
-
-.sb-shortfall-toggle {
-  background: none;
-  border: 1px dashed rgba(197, 160, 89, 0.35);
-  border-radius: 3px;
-  color: var(--color-gold);
-  font-size: 0.72rem;
-  padding: 0.18rem 0.55rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.sb-shortfall-toggle:hover {
-  border-color: var(--color-gold);
-  background: rgba(197, 160, 89, 0.08);
-}
-
 /* Quick stats row */
 .sb-craft-stats {
   display: flex;

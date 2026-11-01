@@ -576,7 +576,6 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
 
   const [showSubmitForm, setShowSubmitForm] = useState(false);
   const [submittedOrder, setSubmittedOrder] = useState<SubmittedOrder | null>(null);
-  const [showAllShortfalls, setShowAllShortfalls] = useState(false);
 
   // Live availability: inventory stock (/missing feed) minus materials
   // committed to in-progress orders
@@ -1080,43 +1079,11 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
                   </>
                 ) : (
                   <>
-                    <strong className="sb-craft-banner-title">
-                      Short on {formatNumber(orderAvailability.shortfalls.length)} material
-                      {orderAvailability.shortfalls.length !== 1 ? 's' : ''}
-                    </strong>
+                    <strong className="sb-craft-banner-title">Just a heads up</strong>
                     <span className="sb-craft-banner-text">
-                      Current materials cover about {formatNumber(orderAvailability.coveredUnits)}{' '}
-                      of {formatNumber(orderAvailability.totalUnits)} ordered parts (
-                      {orderAvailability.coveragePct}%). You can still send the order — the
-                      positions below just need to be sourced or crafted first, so those parts may
-                      take a little longer.
+                      Looks like we are missing some ingredients, so this order will take a little
+                      more time! But don&apos;t worry — we guarantee fast delivery in any case.
                     </span>
-                    <div className="sb-shortfall-list">
-                      {(showAllShortfalls
-                        ? orderAvailability.shortfalls
-                        : orderAvailability.shortfalls.slice(0, 5)
-                      ).map((s) => (
-                        <span
-                          key={s.name}
-                          className="sb-shortfall-chip"
-                          title={`Need ${formatNumber(s.needed)}, have ${formatNumber(s.available)}`}
-                        >
-                          {s.name}
-                          <strong>−{formatNumber(s.missing)}</strong>
-                        </span>
-                      ))}
-                      {orderAvailability.shortfalls.length > 5 && (
-                        <button
-                          type="button"
-                          className="sb-shortfall-toggle"
-                          onClick={() => setShowAllShortfalls((v) => !v)}
-                        >
-                          {showAllShortfalls
-                            ? 'Show less'
-                            : `+${orderAvailability.shortfalls.length - 5} more`}
-                        </button>
-                      )}
-                    </div>
                   </>
                 )}
                 <div className="sb-craft-stats">
