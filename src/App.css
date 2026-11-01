@@ -56,6 +56,37 @@
   opacity: 0.6;
 }
 
+.app-footer-faq {
+  text-align: left;
+  max-width: 680px;
+  margin: 0.5rem auto;
+}
+
+.app-footer-faq summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.app-footer-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-footer-faq summary strong {
+  color: var(--color-gold);
+}
+
+.app-footer-faq summary:hover strong {
+  color: var(--color-gold-light);
+}
+
+.app-footer-faq h3 {
+  margin: 0.75rem 0 0.15rem;
+}
+
+.app-footer-faq p {
+  margin: 0.1rem 0 0;
+}
+
 /* ─── Header ───────────────────────────────────────────────────────────────── */
 .app-brand-row {
   display: flex;
