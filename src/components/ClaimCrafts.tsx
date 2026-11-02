@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { formatNumber } from '../utils/format';
+import { addRecentClaimCode } from '../utils/orderCodes';
 import { submitClaim } from '../api/endpoints';
 import type { ApiCraftClaim, ApiCrafterDiscount } from '../api/types';
 import './MaterialsCalculator.css';
@@ -227,6 +228,9 @@ export default function ClaimCrafts({
         nickname: nickname.trim(),
         items: entries.map((e) => ({ materialId: e.id, quantity: e.qty })),
       });
+      // Register the claim the moment it exists — "My claims" must show it
+      // even if the user never clicks "View My Claims".
+      addRecentClaimCode(claim.claimCode);
       setSubmitted(claim);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('claim.submitFailed'));
