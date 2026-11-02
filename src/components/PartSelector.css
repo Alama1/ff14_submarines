@@ -30,20 +30,11 @@
   gap: 0.75rem;
 }
 
+/* .ff-btn-secondary + bottom-of-card full width, so long translations (DE "Weglassen") never overflow */
 .ps-omit-btn {
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  font-size: 0.72rem;
-  cursor: pointer;
-  text-decoration: underline;
-  padding: 0.25rem;
-  outline: none;
-  transition: color 0.2s ease;
-}
-
-.ps-omit-btn:hover {
-  color: var(--color-error);
+  display: block;
+  width: 100%;
+  margin-top: 0.9rem;
 }
 
 .ps-modified-toggle {

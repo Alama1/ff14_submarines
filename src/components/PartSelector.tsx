@@ -98,12 +98,6 @@ export default function PartSelector({
         </h3>
 
         <div className="ps-header-actions">
-          {selectedPart && (
-            <button type="button" className="ps-omit-btn" onClick={() => onSelectPart(null)}>
-              {t('selector.omit')}
-            </button>
-          )}
-
           <label
             className={`toggle-container ps-modified-toggle ${!selectedPart ? 'is-disabled' : ''}`}
           >
@@ -215,6 +209,10 @@ export default function PartSelector({
               </div>
             )}
           </div>
+
+          <button type="button" className="ff-btn-secondary ps-omit-btn" onClick={() => onSelectPart(null)}>
+            {t('selector.omit')}
+          </button>
         </>
       ) : (
         <div className="ps-empty">{t('selector.empty')}</div>
