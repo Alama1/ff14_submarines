@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from './i18n';
+import { LANGS } from './i18n';
 import { useCatalog } from './hooks/useCatalog';
 import ForCrafters from './components/ForCrafters';
 import SetBuilder from './components/SetBuilder';
@@ -18,6 +21,7 @@ function getTabFromHash(): TabId {
 }
 
 function App() {
+  const { t } = useTranslation();
   const catalog = useCatalog();
   const [activeTab, setActiveTabState] = useState<TabId>(getTabFromHash);
   const [orderLookupCode, setOrderLookupCode] = useState<string>('');
@@ -53,7 +57,19 @@ function App() {
             <Anchor size={36} className="app-brand-icon" />
             <h1 className="app-title">Alamai Submarines</h1>
           </div>
-          <span className="app-subtitle">Best Submarine parts in Eorzea</span>
+          <span className="app-subtitle">{t('app.subtitle')}</span>
+        </div>
+        <div className="app-lang-switcher" role="group" aria-label="Language">
+          {LANGS.map((l) => (
+            <button
+              key={l}
+              type="button"
+              className={`app-lang-btn ${i18n.language === l ? 'is-active' : ''}`}
+              onClick={() => i18n.changeLanguage(l)}
+            >
+              {l.toUpperCase()}
+            </button>
+          ))}
         </div>
       </header>
 
@@ -64,7 +80,7 @@ function App() {
           onClick={() => setActiveTab('builder')}
         >
           <Hammer size={14} className="tab-btn-icon" />
-          Set Builder
+          {t('app.nav.builder')}
         </button>
         <button
           type="button"
@@ -72,7 +88,7 @@ function App() {
           onClick={() => setActiveTab('orders')}
         >
           <Ship size={14} className="tab-btn-icon" />
-          Orders
+          {t('app.nav.orders')}
         </button>
         <button
           type="button"
@@ -80,7 +96,7 @@ function App() {
           onClick={() => setActiveTab('crafters')}
         >
           <Wrench size={14} className="tab-btn-icon" />
-          For crafters
+          {t('app.nav.crafters')}
         </button>
         <button
           type="button"
@@ -88,7 +104,7 @@ function App() {
           onClick={() => setActiveTab('about')}
         >
           <Info size={14} className="tab-btn-icon" />
-          About
+          {t('app.nav.about')}
         </button>
       </nav>
 
@@ -96,11 +112,11 @@ function App() {
         {catalog.loading ? (
           <div className="app-loading">
             <RefreshCw size={36} className="spin app-loading-icon" />
-            <p className="app-loading-text">Loading Eorzean Stock Records...</p>
+            <p className="app-loading-text">{t('app.loading')}</p>
           </div>
         ) : catalog.error ? (
           <div className="app-error">
-            <p className="app-error-title">⚓ Failed to reach the harbor</p>
+            <p className="app-error-title">⚓ {t('app.errorTitle')}</p>
             <p className="app-error-detail">{catalog.error}</p>
             <button
               type="button"
@@ -109,7 +125,7 @@ function App() {
                 catalog.refresh();
               }}
             >
-              <RefreshCw size={14} /> Try Again
+              <RefreshCw size={14} /> {t('app.tryAgain')}
             </button>
           </div>
         ) : (
@@ -133,17 +149,18 @@ function App() {
       <footer className="app-footer">
         <details className="app-footer-faq">
           <summary className="app-footer-tagline">
-            Alamai Submarines — Best Submarine parts in Eorzea. <strong>FAQ</strong>
+            Alamai Submarines — {t('app.subtitle')} <strong>FAQ</strong>
           </summary>
-          {/* Kept in sync with the FAQPage JSON-LD in index.html — edit both together */}
-          <h3>Where can I buy submarine parts in FFXIV?</h3>
-          <p>You can buy premium FFXIV submarine parts from Alamai Submarines at submarines.alamai.dev. We offer all submarine components including hulls, sterns, bows, and bridges with live stock levels and instant ordering.</p>
-          <h3>How do I make money with crafting in FF14?</h3>
-          <p>One of the best ways to make gil with crafting in FF14 is by crafting submarine parts for other players. Submarine parts are always in demand because Free Companies need them for submarine voyages. Alamai Submarines connects crafters with buyers through our For Crafters program.</p>
-          <h3>What are the best submarine builds in FFXIV?</h3>
-          <p>Popular submarine builds in FFXIV include WSUC (Whale-class) and SSSS (Shark-class) configurations. Use our Set Builder tool at submarines.alamai.dev to compare different part combinations, see stats, and calculate total costs for your ideal submarine build.</p>
-          <h3>What is a submarine set builder for FF14?</h3>
-          <p>A submarine set builder is a tool that lets you pick individual submarine parts (hull, stern, bow, bridge) and see the total stats, price, and availability. Alamai Submarines offers a free set builder with live pricing and stock levels.</p>
+          {/* Text mirrors the English-only FAQPage JSON-LD in index.html (SEO copy is
+              intentionally English; the visible FAQ is translated via locales) */}
+          <h3>{t('footer.faq.q1')}</h3>
+          <p>{t('footer.faq.a1')}</p>
+          <h3>{t('footer.faq.q2')}</h3>
+          <p>{t('footer.faq.a2')}</p>
+          <h3>{t('footer.faq.q3')}</h3>
+          <p>{t('footer.faq.a3')}</p>
+          <h3>{t('footer.faq.q4')}</h3>
+          <p>{t('footer.faq.a4')}</p>
         </details>
         <p className="app-footer-legal">
           FINAL FANTASY XIV © 2010 - 2026 SQUARE ENIX CO., LTD. All Rights Reserved. We are not

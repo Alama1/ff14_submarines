@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ElementType } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
+import { itemName } from '../itemNames';
 import {
   Search,
   RefreshCw,
@@ -52,22 +55,24 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; Icon: ElementType }> =
 const STATUS_FLOW: OrderStatus[] = ['pending', 'confirmed', 'in_progress', 'finished', 'fulfilled'];
 
 function StatusBadge({ status }: { status: OrderStatus }) {
+  const { t } = useTranslation();
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending;
   const { Icon } = cfg;
   return (
     <span className={`op-status-badge op-status-${status}`}>
       <Icon size={11} />
-      {cfg.label}
+      {t(`orderStatus.${status}`, { defaultValue: cfg.label })}
     </span>
   );
 }
 
 function StatusStepper({ status }: { status: OrderStatus }) {
+  const { t } = useTranslation();
   if (status === 'cancelled') {
     return (
       <div className="op-cancelled-note">
         <XCircle size={14} />
-        This order was cancelled. Contact @Alamai on Discord if you think this is a mistake.
+        {t('orders.cancelledNote')}
       </div>
     );
   }
@@ -91,7 +96,7 @@ function StatusStepper({ status }: { status: OrderStatus }) {
               }`}
             >
               {isDone ? <CheckCircle size={11} /> : isCurrent ? <cfg.Icon size={11} /> : null}
-              {cfg.label}
+              {t(`orderStatus.${step}`, { defaultValue: cfg.label })}
             </div>
           </div>
         );
@@ -104,7 +109,7 @@ function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—';
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return dateStr;
-  return date.toLocaleString('en-GB', {
+  return date.toLocaleString(i18n.language, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -117,15 +122,17 @@ function formatFulfillment(dateStr: string | null): string {
   if (!dateStr || dateStr === 'ASAP') return 'ASAP';
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return dateStr;
-  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString(i18n.language, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 // ─── Order card ───────────────────────────────────────────────────────────────
 
 function OrderCard({ order }: { order: ApiOrder }) {
+  const { t } = useTranslation();
   const builds = useMemo(
-    () => Array.from(new Set(order.items.map((it) => it.buildName || 'Build'))),
-    [order.items]
+    () => Array.from(new Set(order.items.map((it) => it.buildName || t('common.build')))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [order.items, t]
   );
   const totalParts = order.items.reduce((s, it) => s + it.quantity, 0);
   const discountPct = Number(order.discountPct) || 0;
@@ -144,17 +151,20 @@ function OrderCard({ order }: { order: ApiOrder }) {
               <User size={11} /> {order.clientName}
             </span>
             <span className="op-card-meta-item">
-              <Calendar size={11} /> Placed {formatDate(order.createdAt)}
+              <Calendar size={11} /> {t('orders.placed')} {formatDate(order.createdAt)}
             </span>
             <span className="op-card-meta-item">
-              <Ship size={11} /> {totalParts} part{totalParts !== 1 ? 's' : ''} · {builds.length}{' '}
-              build{builds.length !== 1 ? 's' : ''}
+              <Ship size={11} />{' '}
+              {t('orders.partsBuildsMeta', {
+                parts: t('units.part', { count: totalParts, n: totalParts }),
+                builds: t('units.build', { count: builds.length, n: builds.length }),
+              })}
             </span>
           </div>
         </div>
 
         <div className="op-card-total-block">
-          <span className="op-card-total-label">Order Total</span>
+          <span className="op-card-total-label">{t('orders.orderTotal')}</span>
           <div className="gil-price op-card-total">
             <span>{formatNumber(order.total)}</span>
             <span className="gil-coin op-coin-lg">G</span>
@@ -176,14 +186,16 @@ function OrderCard({ order }: { order: ApiOrder }) {
                 .map((item) => (
                   <div key={item.id} className="op-item-row" role="row">
                     <span className="op-item-name" role="cell">
-                      {item.partName}
+                      {itemName(item.partName)}
                     </span>
                     <span className="op-item-qty" role="cell">
                       ×{item.quantity}
                     </span>
                     <span className="op-item-meta" role="cell">
                       <span className="op-item-type">
-                        {item.partType === 'Materials' ? 'Extra' : item.partType}
+                        {item.partType === 'Materials'
+                          ? t('common.extra')
+                          : t(`parts.${item.partType}`, { defaultValue: item.partType })}
                       </span>
                       <span className="op-item-unit">{formatGil(item.unitPrice)}</span>
                     </span>
@@ -200,14 +212,14 @@ function OrderCard({ order }: { order: ApiOrder }) {
       {/* Pricing summary */}
       <div className="op-pricing">
         <div className="op-price-col">
-          <span className="op-price-label is-muted">Subtotal</span>
+          <span className="op-price-label is-muted">{t('common.subtotal')}</span>
           <span className="op-price-value">{formatGil(order.subtotal)}</span>
         </div>
         <div className="op-price-col">
           <span className="op-price-label is-success">
             {order.discountSource === 'promo' && order.promoCode
-              ? `Promo (${order.promoCode})`
-              : 'Discount'}
+              ? t('orders.promoLabel', { code: order.promoCode })
+              : t('orders.discount')}
           </span>
           <span className="op-price-value is-success">
             {order.discountAmt > 0
@@ -220,7 +232,7 @@ function OrderCard({ order }: { order: ApiOrder }) {
           </span>
         </div>
         <div className="op-price-col">
-          <span className="op-price-label is-gold">Total</span>
+          <span className="op-price-label is-gold">{t('common.total')}</span>
           <div className="gil-price op-price-total">
             <span>{formatNumber(order.total)}</span>
             <span className="gil-coin op-coin-sm">G</span>
@@ -232,26 +244,28 @@ function OrderCard({ order }: { order: ApiOrder }) {
       <div className="op-meta">
         <div className="op-meta-col">
           <span className="op-meta-label">
-            <Calendar size={10} /> Fulfillment
+            <Calendar size={10} /> {t('orders.fulfillment')}
           </span>
           <span
             className={`op-meta-value ${
               order.fulfillmentDt && order.fulfillmentDt !== 'ASAP' ? 'is-warning' : ''
             }`}
           >
-            {formatFulfillment(order.fulfillmentDt)}
+            {formatFulfillment(order.fulfillmentDt) === 'ASAP'
+              ? t('orders.asap')
+              : formatFulfillment(order.fulfillmentDt)}
           </span>
         </div>
         <div className="op-meta-col">
           <span className="op-meta-label">
-            <CheckCircle size={10} /> Confirmed
+            <CheckCircle size={10} /> {t('orders.confirmedAt')}
           </span>
           <span className="op-meta-value">{formatDate(order.confirmedAt)}</span>
         </div>
         {order.notes && (
           <div className="op-meta-col op-meta-notes">
             <span className="op-meta-label">
-              <FileText size={10} /> Notes
+              <FileText size={10} /> {t('orders.notes')}
             </span>
             <span className="op-meta-notes-text">{order.notes}</span>
           </div>
@@ -264,6 +278,7 @@ function OrderCard({ order }: { order: ApiOrder }) {
 // ─── Build queue (public in-progress orders) ──────────────────────────────────
 
 function BuildQueue({ orders }: { orders: InProgressOrder[] }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(true);
 
   const grouped = useMemo(() => {
@@ -333,10 +348,12 @@ function BuildQueue({ orders }: { orders: InProgressOrder[] }) {
       <div className="op-queue-header" onClick={() => setOpen((v) => !v)}>
         <div className="op-queue-title-row">
           <Layers size={16} className="op-queue-icon" />
-          <span className="op-queue-title">Current Build Queue</span>
+          <span className="op-queue-title">{t('queue.title')}</span>
           <span className="op-queue-count">
-            {orders.length} order{orders.length !== 1 ? 's' : ''} · {formatNumber(totalParts)} part
-            {totalParts !== 1 ? 's' : ''}
+            {t('queue.count', {
+              orders: t('units.order', { count: orders.length, n: orders.length }),
+              parts: t('units.part', { count: totalParts, n: formatNumber(totalParts) }),
+            })}
           </span>
         </div>
         <div className="op-queue-chevron">{open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</div>
@@ -348,7 +365,7 @@ function BuildQueue({ orders }: { orders: InProgressOrder[] }) {
           {clients.length > 0 && (
             <div className="op-queue-clients">
               <span className="op-queue-clients-label">
-                <User size={11} /> Building for:
+                <User size={11} /> {t('queue.buildingFor')}
               </span>
               {clients.map((name) => (
                 <span key={name} className="op-queue-client-chip">
@@ -360,19 +377,19 @@ function BuildQueue({ orders }: { orders: InProgressOrder[] }) {
           )}
 
           <div className="op-table-box">
-            <div className="op-queue-table" role="table" aria-label="Current build queue">
+            <div className="op-queue-table" role="table" aria-label={t('queue.title')}>
               <div className="op-queue-head" role="row">
                 <span className="op-queue-th" role="columnheader">
-                  Type
+                  {t('queue.thType')}
                 </span>
                 <span className="op-queue-th" role="columnheader">
-                  Part
+                  {t('queue.thPart')}
                 </span>
                 <span className="op-queue-th is-center" role="columnheader">
-                  Crafted
+                  {t('queue.thCrafted')}
                 </span>
                 <span className="op-queue-th is-center" role="columnheader">
-                  Qty Needed
+                  {t('queue.thNeeded')}
                 </span>
               </div>
               {ALL_PART_TYPES.map((type) => {
@@ -385,20 +402,27 @@ function BuildQueue({ orders }: { orders: InProgressOrder[] }) {
                     role="row"
                   >
                     <span className="op-queue-part" role="cell">
-                      {item.partName}
+                      {itemName(item.partName)}
                     </span>
                     <span className="op-queue-qty" role="cell">
                       ×{formatNumber(item.totalQty)}
                     </span>
                     <span className="op-queue-meta" role="cell">
                       <span className={`op-queue-type ${idx === 0 ? 'is-header' : ''}`}>
-                        {idx === 0 ? (type === 'Materials' ? 'Extra' : type) : ''}
+                        {idx === 0
+                          ? type === 'Materials'
+                            ? t('common.extra')
+                            : t(`parts.${type}`, { defaultValue: type })
+                          : ''}
                       </span>
                       <span
                         className={`op-queue-crafted ${
                           item.readyStock >= item.totalQty ? 'is-complete' : ''
                         }`}
-                        title={`${formatNumber(item.readyStock)} already crafted of ${formatNumber(item.totalQty)} needed`}
+                        title={t('queue.craftedTip', {
+                          ready: formatNumber(item.readyStock),
+                          total: formatNumber(item.totalQty),
+                        })}
                       >
                         {formatNumber(item.readyStock)}
                       </span>
@@ -410,10 +434,7 @@ function BuildQueue({ orders }: { orders: InProgressOrder[] }) {
           </div>
           <div className="op-queue-note">
             <Hammer size={11} />
-            <span>
-              These orders are confirmed and currently being built. Your order appears here once
-              @Alamai confirms your code.
-            </span>
+            <span>{t('queue.note')}</span>
           </div>
         </div>
       )}
@@ -424,6 +445,7 @@ function BuildQueue({ orders }: { orders: InProgressOrder[] }) {
 // ─── Main Orders panel ────────────────────────────────────────────────────────
 
 export default function OrdersPanel({ catalog, initialCode }: OrdersPanelProps) {
+  const { t } = useTranslation();
   const { inProgress, refresh } = catalog;
 
   const [codeInput, setCodeInput] = useState(initialCode ?? '');
@@ -452,14 +474,15 @@ export default function OrdersPanel({ catalog, initialCode }: OrdersPanelProps) 
       setError(
         e instanceof ApiError
           ? e.status === 404
-            ? `No order found with code "${code}". Double-check the code and try again.`
+            ? t('orders.notFound', { code })
             : e.message
-          : 'Failed to look up the order. Please try again.'
+          : t('orders.lookupFailed')
       );
     } finally {
       setLoading(false);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t]);
 
   // Auto-lookup on mount when a code is passed from another tab (e.g. after
   // submitting an order). The component is keyed by the code in App, so this
@@ -481,15 +504,15 @@ export default function OrdersPanel({ catalog, initialCode }: OrdersPanelProps) 
         setError(
           e instanceof ApiError
             ? e.status === 404
-              ? `No order found with code "${initialCode}". Double-check the code and try again.`
+              ? t('orders.notFound', { code: initialCode })
               : e.message
-            : 'Failed to look up the order. Please try again.'
+            : t('orders.lookupFailed')
         );
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [initialCode]);
+  }, [initialCode, t]);
 
   const handleRemoveRecent = (code: string) => {
     removeRecentOrderCode(code);
@@ -530,16 +553,13 @@ export default function OrdersPanel({ catalog, initialCode }: OrdersPanelProps) 
       <div className="op-header">
         <div>
           <h2 className="op-header-title">
-            <Ship size={22} /> Order Tracking
+            <Ship size={22} /> {t('orders.title')}
           </h2>
-          <p className="op-header-sub">
-            Enter the confirmation code you received when submitting your order to check its
-            status.
-          </p>
+          <p className="op-header-sub">{t('orders.sub')}</p>
         </div>
         <button type="button" className="ff-btn-secondary op-refresh-btn" onClick={handleRefresh}>
           <RefreshCw size={14} className={catalog.loading ? 'spin' : ''} />
-          Refresh
+          {t('common.refresh')}
         </button>
       </div>
 
@@ -553,11 +573,11 @@ export default function OrdersPanel({ catalog, initialCode }: OrdersPanelProps) 
           }}
         >
           <div className="form-group op-code-group">
-            <label className="form-label op-code-label">Confirmation Code</label>
+            <label className="form-label op-code-label">{t('orders.codeLabel')}</label>
             <input
               type="text"
               className="form-input op-code-input"
-              placeholder="e.g. SUB-7K9P"
+              placeholder={t('orders.codePlaceholder')}
               value={codeInput}
               onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
               maxLength={20}
@@ -569,7 +589,7 @@ export default function OrdersPanel({ catalog, initialCode }: OrdersPanelProps) 
             disabled={loading || !codeInput.trim()}
           >
             {loading ? <RefreshCw size={15} className="spin" /> : <Search size={15} />}
-            {loading ? 'Searching…' : 'Track Order'}
+            {loading ? t('common.searching') : t('orders.track')}
           </button>
         </form>
 
@@ -577,7 +597,7 @@ export default function OrdersPanel({ catalog, initialCode }: OrdersPanelProps) 
         {recentCodes.length > 0 && (
           <div className="op-recent">
             <span className="op-recent-label">
-              <History size={11} /> Your recent orders:
+              <History size={11} /> {t('orders.recentLabel')}
             </span>
             <div className="op-recent-grid">
               {recentCodes.slice(0, 4).map((code) => (
@@ -598,7 +618,7 @@ export default function OrdersPanel({ catalog, initialCode }: OrdersPanelProps) 
                   <button
                     type="button"
                     className="op-recent-remove-btn"
-                    title="Forget this code"
+                    title={t('common.forgetTip')}
                     onClick={() => handleRemoveRecent(code)}
                   >
                     <Trash2 size={11} />
@@ -620,7 +640,7 @@ export default function OrdersPanel({ catalog, initialCode }: OrdersPanelProps) 
       {loading && !order && (
         <div className="op-loading">
           <RefreshCw size={30} className="spin op-loading-spinner" />
-          <p className="op-loading-text">Diving through the order ledger…</p>
+          <p className="op-loading-text">{t('orders.loadingText')}</p>
         </div>
       )}
 
@@ -633,11 +653,8 @@ export default function OrdersPanel({ catalog, initialCode }: OrdersPanelProps) 
         <div className="op-empty">
           <Package size={32} className="op-empty-icon" />
           <div className="op-empty-title-block">
-            <span className="op-empty-title">No order loaded yet</span>
-            <span className="op-empty-sub">
-              Submit an order from the Set Builder to receive a code, then track it here. Your
-              recent codes are remembered on this device.
-            </span>
+            <span className="op-empty-title">{t('orders.emptyTitle')}</span>
+            <span className="op-empty-sub">{t('orders.emptySub')}</span>
           </div>
         </div>
       )}

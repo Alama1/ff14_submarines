@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { localizeItemNames, NamedItem } from '../itemNames';
 import {
   fetchDiscounts,
   fetchInProgressOrders,
@@ -43,6 +45,8 @@ export function useCatalog(): UseCatalogResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const didFetch = useRef(false);
+  const { i18n } = useTranslation();
+  const namedItemsRef = useRef<NamedItem[]>([]);
 
   const fetchData = useCallback(async (bypassCache = false, silent = false) => {
     if (!silent) {
@@ -60,6 +64,15 @@ export function useCatalog(): UseCatalogResult {
       setDiscounts([...discountsData].sort((a, b) => a.threshold - b.threshold));
       setInProgress(inProgressData);
       setMissing(missingData);
+      const named: NamedItem[] = [
+        ...partsData.map((p) => ({ itemId: p.itemId, name: p.name })),
+        ...partsData.flatMap((p) =>
+          (p.materials ?? []).map((m) => ({ itemId: m.material.itemId, name: m.material.name }))
+        ),
+        ...missingData.map((m) => ({ itemId: m.itemId, name: m.name })),
+      ];
+      namedItemsRef.current = named;
+      localizeItemNames(named);
     } catch (e: unknown) {
       if (!silent) {
         setError(e instanceof Error ? e.message : 'Failed to load catalog data.');
@@ -76,6 +89,11 @@ export function useCatalog(): UseCatalogResult {
     didFetch.current = true;
     fetchData();
   }, [fetchData]);
+
+  // Refetch in-game names when the user switches language
+  useEffect(() => {
+    if (namedItemsRef.current.length > 0) localizeItemNames(namedItemsRef.current);
+  }, [i18n.language]);
 
   const partsById = useMemo(
     () => Object.fromEntries(parts.map((p) => [p.id, p])),

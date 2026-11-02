@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
+import i18n from '../i18n';
+import { itemName } from '../itemNames';
 import {
   Boxes,
   Check,
@@ -65,9 +68,8 @@ function stackLabel(qty: number): string | null {
   if (qty < STACK_SIZE) return null;
   const stacks = Math.floor(qty / STACK_SIZE);
   const rem = qty % STACK_SIZE;
-  return rem > 0
-    ? `${stacks} stack${stacks !== 1 ? 's' : ''} + ${rem}`
-    : `${stacks} stack${stacks !== 1 ? 's' : ''}`;
+  const label = i18n.t('claim.stacks', { count: stacks, n: stacks });
+  return rem > 0 ? `${label} + ${rem}` : label;
 }
 
 function highlight(name: string, query: string) {
@@ -97,6 +99,7 @@ export default function ClaimCrafts({
   /** Called after a claim is submitted — switches the user to "My Claims". */
   onClaimed: (code: string) => void;
 }) {
+  const { t } = useTranslation();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [query, setQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -111,17 +114,19 @@ export default function ClaimCrafts({
   const itemsById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
 
   // Suggestion order: what the workshop still needs first, then the rest
+  // Search + sort match the localized display names, not the English source
   const suggestions = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = q ? items.filter((i) => i.name.toLowerCase().includes(q)) : items;
+    const filtered = q ? items.filter((i) => itemName(i.name).toLowerCase().includes(q)) : items;
     return [...filtered].sort((a, b) => {
       const aNeed = a.remaining > 0 ? 0 : 1;
       const bNeed = b.remaining > 0 ? 0 : 1;
       if (aNeed !== bNeed) return aNeed - bNeed;
       if (aNeed === 0 && b.remaining !== a.remaining) return b.remaining - a.remaining;
-      return a.name.localeCompare(b.name);
+      return itemName(a.name).localeCompare(itemName(b.name));
     });
-  }, [items, query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, query, i18n.language]);
 
   const activeIndex = Math.min(
     rawActiveIndex,
@@ -224,7 +229,7 @@ export default function ClaimCrafts({
       });
       setSubmitted(claim);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to submit the claim. Please try again.');
+      setError(err instanceof Error ? err.message : t('claim.submitFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -245,35 +250,31 @@ export default function ClaimCrafts({
           <div className="cc-success-icon">
             <Check size={34} />
           </div>
-          <h3 className="cc-success-title">Claim Request Sent!</h3>
+          <h3 className="cc-success-title">{t('claim.successTitle')}</h3>
           <p className="cc-success-sub">
-            Your claim has been received. Poke <strong>@Alamai</strong> in Discord to get it
-            confirmed — you can track and manage all your claims in{' '}
-            <strong>My Claims</strong>.
+            <Trans
+              i18nKey="claim.successSub"
+              components={{ strong: <strong />, handle: <strong>@Alamai</strong> }}
+            />
           </p>
 
           <div className="cc-success-payout">
-            <span className="cc-success-payout-label">Payout</span>
+            <span className="cc-success-payout-label">{t('claim.payout')}</span>
             <span className="gil-price cc-success-payout-amount">
               <span>{formatNumber(submitted.total)}</span>
               <span className="gil-coin mc-coin-lg">G</span>
             </span>
             {Number(submitted.bonusPct) > 0 && (
               <span className="cc-success-payout-meta">
-                incl. +{Number(submitted.bonusPct)}% bulk bonus
+                {t('claim.inclBonus', { pct: Number(submitted.bonusPct) })}
               </span>
             )}
             {unpricedCount > 0 && (
-              <span className="cc-success-payout-meta">
-                final total will be confirmed by @Alamai
-              </span>
+              <span className="cc-success-payout-meta">{t('claim.finalConfirmed')}</span>
             )}
           </div>
 
-          <p className="cc-mistake-note">
-            Made a mistake in the claim? No worries — just cancel it in My Claims and make a
-            new one.
-          </p>
+          <p className="cc-mistake-note">{t('claim.mistakeNote')}</p>
 
           <div className="cc-success-actions">
             <button
@@ -282,10 +283,10 @@ export default function ClaimCrafts({
               onClick={() => onClaimed(submitted.claimCode)}
             >
               <Hammer size={14} />
-              View My Claims
+              {t('claim.viewMyClaims')}
             </button>
             <button type="button" className="ff-btn-secondary" onClick={resetForm}>
-              Make Another Claim
+              {t('claim.anotherClaim')}
             </button>
           </div>
         </div>
@@ -302,18 +303,15 @@ export default function ClaimCrafts({
             <Hammer size={20} />
           </div>
           <div>
-            <h3 className="mc-title">Claim Some Crafts</h3>
-            <p className="mc-sub">
-              Pick what you will craft or deliver and send a claim request — the workshop
-              confirms it, then you craft and get paid.
-            </p>
+            <h3 className="mc-title">{t('claim.title')}</h3>
+            <p className="mc-sub">{t('claim.sub')}</p>
           </div>
         </div>
         <button
           type="button"
           className="ff-btn-secondary mc-close-btn"
           onClick={onClose}
-          title="Hide the claim form"
+          title={t('claim.hideTip')}
         >
           <X size={14} />
         </button>
@@ -333,7 +331,7 @@ export default function ClaimCrafts({
               ref={searchRef}
               type="text"
               className="mc-search-input"
-              placeholder='Type a material — try "cobalt"…'
+              placeholder={t('claim.searchPlaceholder')}
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -342,7 +340,7 @@ export default function ClaimCrafts({
               }}
               onFocus={() => setDropdownOpen(true)}
               onKeyDown={handleSearchKeyDown}
-              aria-label="Search material"
+              aria-label={t('claim.searchAria')}
             />
             {query && (
               <button
@@ -352,7 +350,7 @@ export default function ClaimCrafts({
                   setQuery('');
                   searchRef.current?.focus();
                 }}
-                title="Clear search"
+                title={t('claim.clearTip')}
               >
                 <X size={12} />
               </button>
@@ -367,11 +365,11 @@ export default function ClaimCrafts({
                     onMouseEnter={() => setActiveIndex(i)}
                     onClick={() => handleAddFromDropdown(item)}
                   >
-                    <span className="mc-option-name">{highlight(item.name, query)}</span>
+                    <span className="mc-option-name">{highlight(itemName(item.name), query)}</span>
                     <span className="mc-option-meta">
                       {item.remaining > 0 && (
                         <span className="mc-option-need">
-                          {formatNumber(item.remaining)} needed
+                          {t('claim.needed', { n: formatNumber(item.remaining) })}
                         </span>
                       )}
                       <span className="mc-option-price">
@@ -384,7 +382,7 @@ export default function ClaimCrafts({
             )}
             {dropdownOpen && suggestions.length === 0 && (
               <div className="mc-dropdown">
-                <div className="mc-no-results">No materials match “{query}”.</div>
+                <div className="mc-no-results">{t('claim.noResults', { query })}</div>
               </div>
             )}
           </div>
@@ -394,10 +392,8 @@ export default function ClaimCrafts({
       {entries.length === 0 ? (
         <div className="mc-empty">
           <Sparkles size={22} />
-          <span className="mc-empty-title">Nothing added yet</span>
-          <span className="mc-empty-sub">
-            Search above and hit Enter — your claim and its payout add up live down here.
-          </span>
+          <span className="mc-empty-title">{t('claim.emptyTitle')}</span>
+          <span className="mc-empty-sub">{t('claim.emptySub')}</span>
         </div>
       ) : (
         <div className="mc-entries">
@@ -412,13 +408,13 @@ export default function ClaimCrafts({
               >
                 <div className="mc-entry-main">
                   <div className="mc-entry-name-wrap">
-                    <span className="mc-entry-name">{item.name}</span>
+                    <span className="mc-entry-name">{itemName(item.name)}</span>
                     <span className="mc-entry-unit">
-                      @ {item.unitPrice ? `${formatNumber(item.unitPrice)} G` : 'price TBD'}
+                      @ {item.unitPrice ? `${formatNumber(item.unitPrice)} G` : t('claim.priceTbd')}
                     </span>
                   </div>
 
-                  <span className="mc-stack-label" title="FF14 stack size is 999">
+                  <span className="mc-stack-label" title={t('claim.stackTip')}>
                     {stackLabel(entry.qty)}
                   </span>
 
@@ -427,7 +423,7 @@ export default function ClaimCrafts({
                       type="button"
                       className="ff-btn-secondary mc-qty-btn"
                       onClick={() => changeQty(entry.id, -1)}
-                      title="Decrease"
+                      title={t('claim.decrease')}
                     >
                       <Minus size={10} />
                     </button>
@@ -437,13 +433,13 @@ export default function ClaimCrafts({
                       min="1"
                       value={entry.qty}
                       onChange={(e) => setEntryQty(entry.id, parseInt(e.target.value, 10))}
-                      aria-label={`Quantity of ${item.name}`}
+                      aria-label={t('claim.qtyAria', { name: itemName(item.name) })}
                     />
                     <button
                       type="button"
                       className="ff-btn-secondary mc-qty-btn"
                       onClick={() => changeQty(entry.id, 1)}
-                      title="Increase"
+                      title={t('claim.increase')}
                     >
                       <Plus size={10} />
                     </button>
@@ -460,7 +456,7 @@ export default function ClaimCrafts({
                     type="button"
                     className="mc-remove-btn"
                     onClick={() => removeEntry(entry.id)}
-                    title="Remove"
+                    title={t('claim.remove')}
                   >
                     <X size={13} />
                   </button>
@@ -477,12 +473,15 @@ export default function ClaimCrafts({
                     <span className={`mc-coverage-label ${coversAll ? 'is-full' : ''}`}>
                       {coversAll ? (
                         <>
-                          <Check size={10} /> covers the whole need
+                          <Check size={10} /> {t('claim.coversAll')}
                         </>
                       ) : (
                         <>
-                          <Hammer size={10} /> {Math.round(coverage * 100)}% of{' '}
-                          {formatNumber(item.remaining)} needed
+                          <Hammer size={10} />{' '}
+                          {t('claim.coveragePct', {
+                            pct: Math.round(coverage * 100),
+                            n: formatNumber(item.remaining),
+                          })}
                         </>
                       )}
                     </span>
@@ -492,7 +491,7 @@ export default function ClaimCrafts({
                         className="mc-coverage-fill"
                         onClick={() => setEntryQty(entry.id, item.remaining)}
                       >
-                        Fill need
+                        {t('claim.fillNeed')}
                       </button>
                     )}
                   </div>
@@ -510,32 +509,31 @@ export default function ClaimCrafts({
             {activeBonus && (
               <div className="mc-bonus-breakdown">
                 <div className="mc-bonus-row">
-                  <span className="mc-bonus-row-label">Subtotal</span>
+                  <span className="mc-bonus-row-label">{t('common.subtotal')}</span>
                   <span className="mc-bonus-row-value">
                     {formatNumber(totalPayout)} G
                   </span>
                 </div>
                 <div className="mc-bonus-row is-bonus">
                   <span className="mc-bonus-row-label">
-                    <Tag size={11} /> Bulk Bonus ({bonusPct}%)
+                    <Tag size={11} /> {t('claim.bulkBonus', { pct: bonusPct })}
                   </span>
                   <span className="mc-bonus-row-value">+{formatNumber(bonusAmount)} G</span>
                 </div>
               </div>
             )}
             <span className="mc-footer-label">
-              {unpricedCount > 0 ? 'Estimated payout' : 'Your payout'}
+              {unpricedCount > 0 ? t('claim.estimatedPayout') : t('claim.yourPayout')}
             </span>
             <div className="gil-price mc-footer-amount" key={finalPayout}>
               <span>{formatNumber(animatedTotal)}</span>
               <span className="gil-coin mc-coin-lg">G</span>
             </div>
             <span className="mc-footer-meta">
-              {formatNumber(entries.length)} material{entries.length !== 1 ? 's' : ''} ·{' '}
-              {formatNumber(totalUnits)} unit{totalUnits !== 1 ? 's' : ''}
-              {activeBonus && ` · includes +${bonusPct}% bulk bonus`}
-              {unpricedCount > 0 &&
-                ` · ${unpricedCount} without price — final total confirmed by @Alamai`}
+              {t('units.material', { count: entries.length, n: formatNumber(entries.length) })} ·{' '}
+              {t('units.unit', { count: totalUnits, n: formatNumber(totalUnits) })}
+              {activeBonus && ` · ${t('claim.includesBonus', { pct: bonusPct })}`}
+              {unpricedCount > 0 && ` · ${t('claim.unpricedSuffix', { count: unpricedCount })}`}
             </span>
           </div>
         </div>
@@ -551,22 +549,19 @@ export default function ClaimCrafts({
         )}
         <div className="form-group cc-nickname-group">
           <label className="form-label cc-nickname-label" htmlFor="cc-nickname">
-            Your Nickname <span className="cc-required">*</span>
+            {t('claim.nicknameLabel')} <span className="cc-required">*</span>
           </label>
           <input
             id="cc-nickname"
             type="text"
             className="form-input cc-nickname-input"
-            placeholder="e.g. Alamai"
+            placeholder={t('common.exampleName')}
             value={nickname}
             maxLength={60}
             onChange={(e) => setNickname(e.target.value)}
             autoComplete="off"
           />
-          <span className="cc-nickname-hint">
-            Used to show who claimed what on the shopping list. Just copy your Discord
-            username from any chat — that's all we need!
-          </span>
+          <span className="cc-nickname-hint">{t('claim.nicknameHint')}</span>
         </div>
         <div className="cc-submit-actions">
           <button
@@ -576,22 +571,22 @@ export default function ClaimCrafts({
             disabled={!canSubmit}
             title={
               entries.length === 0
-                ? 'Add at least one material first'
-                : 'Send the claim request to the workshop'
+                ? t('claim.submitDisabledTip')
+                : t('claim.submitTip')
             }
           >
             {submitting ? <Sparkles size={14} className="spin" /> : <Send size={14} />}
-            {submitting ? 'Sending…' : 'Send Claim Request'}
+            {submitting ? t('claim.sending') : t('claim.send')}
           </button>
           <button
             type="button"
             className="ff-btn-secondary"
             onClick={roundUpToStacks}
             disabled={entries.length === 0 || submitting}
-            title="Round every material up to full stacks of 999"
+            title={t('claim.roundUpTip')}
           >
             <Boxes size={14} />
-            Round Up to Stacks
+            {t('claim.roundUp')}
           </button>
           <button
             type="button"
@@ -600,7 +595,7 @@ export default function ClaimCrafts({
             disabled={submitting}
           >
             <Trash2 size={14} />
-            Clear
+            {t('claim.clear')}
           </button>
         </div>
       </div>
@@ -610,10 +605,10 @@ export default function ClaimCrafts({
         <div className="mc-bonus-guide">
           <div className="mc-bonus-guide-head">
             <div className="mc-bonus-guide-title">
-              <Tag size={12} /> Bulk Bonus Guide
+              <Tag size={12} /> {t('claim.bonusGuide')}
             </div>
             <span className="mc-bonus-guide-count">
-              Current Items Count: <strong>{formatNumber(totalUnits)}</strong>
+              {t('claim.itemsCount')} <strong>{formatNumber(totalUnits)}</strong>
             </span>
           </div>
           <div className="mc-bonus-list">
@@ -624,9 +619,9 @@ export default function ClaimCrafts({
                   key={d.id}
                   className={`mc-bonus-chip ${isCurrent ? 'is-current' : ''}`}
                 >
-                  <span>{formatNumber(d.threshold)}+ Items:</span>
-                  <span className="mc-bonus-chip-pct">+{Number(d.discountPercent)}% Bonus</span>
-                  {isCurrent && <span className="mc-bonus-chip-active">★ Active</span>}
+                  <span>{t('claim.nPlusItems', { n: formatNumber(d.threshold) })}</span>
+                  <span className="mc-bonus-chip-pct">{t('claim.pctBonus', { pct: Number(d.discountPercent) })}</span>
+                  {isCurrent && <span className="mc-bonus-chip-active">{t('builder.activeChip')}</span>}
                 </div>
               );
             })}

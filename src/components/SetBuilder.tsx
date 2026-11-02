@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import PartSelector from './PartSelector';
 import { formatGil, formatNumber, PART_TYPES, ALL_PART_TYPES } from '../utils/format';
 import {
@@ -158,6 +159,9 @@ function OrderSubmitForm({
   onCancel,
   onSubmitted,
 }: OrderSubmitFormProps) {
+  // shortcut: server-generated text (ApiError.message, promo result.message) stays English
+  // until the backend takes a lang param — UI strings below are all localized.
+  const { t } = useTranslation();
   const [form, setForm] = useState<OrderFormState>({
     clientName: '',
     isAnonymous: false,
@@ -208,7 +212,7 @@ function OrderSubmitForm({
     } catch (e: unknown) {
       setPromoCheck(null);
       setPromoError(
-        e instanceof ApiError ? e.message : 'Could not check the promo code. Please try again.'
+        e instanceof ApiError ? e.message : t('builder.errPromoCheck')
       );
     } finally {
       setPromoChecking(false);
@@ -218,11 +222,11 @@ function OrderSubmitForm({
   const handleSubmit = async () => {
     setError('');
     if (!form.clientName.trim()) {
-      setError('Please enter your Discord name.');
+      setError(t('builder.errName'));
       return;
     }
     if (form.fulfillmentType === 'date' && !form.fulfillmentDate) {
-      setError('Please pick a fulfillment date or switch back to ASAP.');
+      setError(t('builder.errDate'));
       return;
     }
 
@@ -237,7 +241,7 @@ function OrderSubmitForm({
       } catch (e: unknown) {
         setPromoCheck(null);
         setPromoError(
-          e instanceof ApiError ? e.message : 'Could not check the promo code. Please try again.'
+          e instanceof ApiError ? e.message : t('builder.errPromoCheck')
         );
         setPromoChecking(false);
         return;
@@ -245,7 +249,7 @@ function OrderSubmitForm({
       setPromoChecking(false);
       setPromoCheck(result);
       if (!result.valid) {
-        setError(result.message || 'This promo code cannot be used.');
+        setError(result.message || t('builder.promoInvalid'));
         return;
       }
       appliedPromo = result.code?.code;
@@ -276,7 +280,7 @@ function OrderSubmitForm({
       setError(
         e instanceof ApiError
           ? e.message
-          : 'Failed to submit the order. Please try again.'
+          : t('builder.errSubmit')
       );
     } finally {
       setSubmitting(false);
@@ -287,32 +291,33 @@ function OrderSubmitForm({
     <div className="ff-card-framed fade-in sb-form-card">
       <div className="sb-form-title-row">
         <Send size={20} />
-        <h3 className="sb-form-title">Send Order Request</h3>
+        <h3 className="sb-form-title">{t('builder.sendRequest')}</h3>
       </div>
       <p className="sb-form-hint">
-        Submitting creates your order and gives you a confirmation code. Send that code to{' '}
-        <strong className="sb-form-handle">@Alamai</strong> on Discord to confirm the
-        build.
+        <Trans
+          i18nKey="builder.formHint"
+          components={{ handle: <strong className="sb-form-handle">@Alamai</strong> }}
+        />
       </p>
 
       <div className="sb-form-grid">
         <div className="form-group sb-form-group">
-          <label className="form-label sb-label-sm">Discord Name *</label>
+          <label className="form-label sb-label-sm">{t('builder.discordName')}</label>
           <input
             type="text"
             className="form-input"
-            placeholder="e.g. Alamai"
+            placeholder={t('common.exampleName')}
             value={form.clientName}
             onChange={(e) => setForm({ ...form, clientName: e.target.value })}
             maxLength={100}
           />
         </div>
         <div className="form-group sb-form-group">
-          <label className="form-label sb-label-sm">Character Name (optional)</label>
+          <label className="form-label sb-label-sm">{t('builder.charName')}</label>
           <input
             type="text"
             className="form-input"
-            placeholder="e.g. Alamai Character"
+            placeholder={t('builder.charNameExample')}
             value={form.contactInfo}
             onChange={(e) => setForm({ ...form, contactInfo: e.target.value })}
             maxLength={100}
@@ -328,20 +333,17 @@ function OrderSubmitForm({
           onChange={(e) => setForm({ ...form, isAnonymous: e.target.checked })}
         />
         <span className="sb-anon-text">
-          <span className="sb-anon-title">Order anonymously</span>
-          <span className="sb-anon-desc">
-            It fully hides your name in the live in-progress order tracking — you'll show up as
-            “Anonymous” instead.
-          </span>
+          <span className="sb-anon-title">{t('builder.anonTitle')}</span>
+          <span className="sb-anon-desc">{t('builder.anonDesc')}</span>
         </span>
       </label>
 
       <div className="form-group sb-form-group">
-        <label className="form-label sb-label-sm">Notes (optional)</label>
+        <label className="form-label sb-label-sm">{t('builder.notes')}</label>
         <textarea
           className="form-input sb-notes-input"
           rows={2}
-          placeholder="Anything Alamai should know about this order…"
+          placeholder={t('builder.notesPlaceholder')}
           value={form.notes}
           onChange={(e) => setForm({ ...form, notes: e.target.value })}
         />
@@ -349,7 +351,7 @@ function OrderSubmitForm({
 
       <div className="sb-fulfillment-row">
         <div className="form-group sb-form-group">
-          <label className="form-label sb-label-sm">Fulfillment</label>
+          <label className="form-label sb-label-sm">{t('builder.fulfillment')}</label>
           <select
             className="form-select sb-fulfillment-select"
             value={form.fulfillmentType}
@@ -365,8 +367,8 @@ function OrderSubmitForm({
               });
             }}
           >
-            <option value="asap">ASAP</option>
-            <option value="date">Pre-order Date</option>
+            <option value="asap">{t('builder.asap')}</option>
+            <option value="date">{t('builder.preOrderDate')}</option>
           </select>
         </div>
         {form.fulfillmentType === 'date' && (
@@ -381,12 +383,12 @@ function OrderSubmitForm({
 
       {/* Promo code */}
       <div className="form-group sb-form-group">
-        <label className="form-label sb-label-sm">Promo Code (optional)</label>
+        <label className="form-label sb-label-sm">{t('builder.promoLabel')}</label>
         <div className="sb-promo-row">
           <input
             type="text"
             className="form-input sb-promo-input"
-            placeholder="e.g. PROMO-AB2C-9XZ4"
+            placeholder={t('builder.promoPlaceholder')}
             value={promoInput}
             maxLength={40}
             onChange={(e) => {
@@ -407,7 +409,7 @@ function OrderSubmitForm({
             disabled={promoChecking || !promoInput.trim()}
           >
             {promoChecking ? <RefreshCw size={14} className="spin" /> : <Tag size={14} />}
-            Check
+            {t('builder.check')}
           </button>
         </div>
         {promoError && (
@@ -421,22 +423,21 @@ function OrderSubmitForm({
             <div className="sb-promo-msg is-success">
               <Check size={12} />
               {promoInfo!.discountType === 'percent'
-                ? `${Number(promoInfo!.discountValue)}% off (−${formatGil(promoAmt)})`
+                ? `${t('builder.percentOff', { pct: Number(promoInfo!.discountValue) })} (−${formatGil(promoAmt)})`
                 : `−${formatGil(promoAmt)}`}{' '}
-              applied to this order
+              {t('builder.appliedToOrder')}
             </div>
           ) : (
             <div className="sb-promo-msg is-error">
               <AlertCircle size={12} />
-              {promoCheck.message || 'This promo code cannot be used.'}
+              {promoCheck.message || t('builder.promoInvalid')}
             </div>
           )
         )}
         {promoCheck?.valid && !promoWins && discountAmt > 0 && (
           <div className="sb-promo-msg is-info">
             <AlertCircle size={12} />
-            Your bulk order discount ({discountPct}%) is higher — it will be applied instead of the
-            promo code.
+            {t('builder.bulkHigher', { pct: discountPct })}
           </div>
         )}
       </div>
@@ -446,21 +447,21 @@ function OrderSubmitForm({
         {(discountPct > 0 || promoAmt > 0) && (
           <>
             <div className="sb-price-col">
-              <span className="sb-price-label is-muted">Subtotal</span>
+              <span className="sb-price-label is-muted">{t('common.subtotal')}</span>
               <span className="sb-price-value">{formatGil(subtotal)}</span>
             </div>
             <div className="sb-price-col">
               <span className="sb-price-label is-success">
                 {promoWins
-                  ? `Promo Code (${promoInfo!.code})`
-                  : `Bulk Discount (${discountPct}%)`}
+                  ? t('builder.promoCodeLabel', { code: promoInfo!.code })
+                  : t('builder.bulkDiscount', { pct: discountPct })}
               </span>
               <span className="sb-price-value is-success">−{formatGil(effectiveAmt)}</span>
             </div>
           </>
         )}
         <div className="sb-price-col">
-          <span className="sb-price-label is-gold">Total</span>
+          <span className="sb-price-label is-gold">{t('common.total')}</span>
           <div className="gil-price sb-price-total">
             <span>{formatNumber(effectiveTotal)}</span>
             <span className="gil-coin sb-coin-sm">G</span>
@@ -483,10 +484,10 @@ function OrderSubmitForm({
           disabled={submitting || promoChecking}
         >
           {submitting ? <RefreshCw size={16} className="spin" /> : <Send size={16} />}
-          {submitting ? 'Submitting…' : 'Submit Order Request'}
+          {submitting ? t('builder.submitting') : t('builder.submitBtn')}
         </button>
         <button type="button" className="ff-btn-secondary" onClick={onCancel} disabled={submitting || promoChecking}>
-          Cancel
+          {t('common.cancel')}
         </button>
       </div>
     </div>
@@ -502,6 +503,7 @@ interface OrderSuccessViewProps {
 }
 
 function OrderSuccessView({ order, onTrack, onNewOrder }: OrderSuccessViewProps) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -518,22 +520,28 @@ function OrderSuccessView({ order, onTrack, onNewOrder }: OrderSuccessViewProps)
       </div>
 
       <div className="sb-success-head">
-        <h2 className="sb-success-title">Order Request Sent!</h2>
+        <h2 className="sb-success-title">{t('builder.successTitle')}</h2>
         <p className="sb-success-sub">
-          Your order has been created with a total of{' '}
-          <strong>{formatGil(order.total)}</strong>.
+          <Trans
+            i18nKey="builder.successSub"
+            values={{ total: formatGil(order.total) }}
+            components={{ strong: <strong /> }}
+          />
         </p>
         {order.promoCode && order.discountSource === 'bulk' && (
           <p className="sb-success-promo-note">
-            Your bulk order discount was higher, so it was applied instead of the promo code{' '}
-            <strong>{order.promoCode}</strong>.
+            <Trans
+              i18nKey="builder.successBulkNote"
+              values={{ code: order.promoCode }}
+              components={{ strong: <strong /> }}
+            />
           </p>
         )}
       </div>
 
       <div className="sb-success-code-block">
-        <span className="sb-success-code-label">Your Confirmation Code</span>
-        <button type="button" className="sb-success-code-btn" onClick={handleCopy} title="Click to copy">
+        <span className="sb-success-code-label">{t('builder.codeLabel')}</span>
+        <button type="button" className="sb-success-code-btn" onClick={handleCopy} title={t('common.copyTip')}>
           {order.orderCode}
           {copied ? (
             <Check size={18} className="sb-success-code-icon is-copied" />
@@ -546,18 +554,22 @@ function OrderSuccessView({ order, onTrack, onNewOrder }: OrderSuccessViewProps)
       <div className="sb-success-next">
         <Ship size={18} className="sb-success-next-icon" />
         <span className="sb-success-next-text">
-          <strong>Next step:</strong> send this code to{' '}
-          <span className="sb-success-handle">@Alamai</span> on Discord to confirm your build
-          request. You can track the progress anytime in the Orders tab.
+          <Trans
+            i18nKey="builder.nextStep"
+            components={{
+              strong: <strong />,
+              handle: <span className="sb-success-handle">@Alamai</span>,
+            }}
+          />
         </span>
       </div>
 
       <div className="sb-success-actions">
         <button type="button" className="ff-btn" onClick={onTrack}>
-          <ExternalLink size={14} /> Track This Order
+          <ExternalLink size={14} /> {t('builder.trackBtn')}
         </button>
         <button type="button" className="ff-btn-secondary" onClick={onNewOrder}>
-          <Plus size={14} /> Build Another Order
+          <Plus size={14} /> {t('builder.anotherBtn')}
         </button>
       </div>
     </div>
@@ -567,6 +579,7 @@ function OrderSuccessView({ order, onTrack, onNewOrder }: OrderSuccessViewProps)
 // ─── Main SetBuilder ──────────────────────────────────────────────────────────
 
 export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
+  const { t } = useTranslation();
   const { parts, partsById, discounts, inProgress, missing } = catalog;
 
   const [builds, setBuilds] = useState<SubmarineBuild[]>(() =>
@@ -852,7 +865,7 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
           })}
 
           <button type="button" className="ff-btn-secondary sb-add-btn" onClick={handleAddBuild}>
-            <Plus size={14} /> Add Another Set
+            <Plus size={14} /> {t('builder.addSet')}
           </button>
         </div>
 
@@ -862,7 +875,7 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
             className="ff-btn-secondary sb-remove-btn"
             onClick={() => handleRemoveBuild(activeBuildId)}
           >
-            Remove Set
+            {t('builder.removeSet')}
           </button>
         )}
       </div>
@@ -870,33 +883,28 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
       <div className="sb-header">
         <div className="sb-header-text">
           <h2 className="sb-header-title">
-            <span>✦</span> Submarine Set Builder
+            <span>✦</span> {t('builder.title')}
           </h2>
-          <p className="sb-header-sub">
-            Choose components and set quantities per part, or use the set multiplier to order
-            multiple identical builds at once. Submit your selection to get an order code.
-          </p>
+          <p className="sb-header-sub">{t('builder.sub')}</p>
         </div>
 
         {/* Name editor for the active build */}
         <div className="sb-rename-block">
-          <label className="sb-rename-label">Set / Build Name</label>
+          <label className="sb-rename-label">{t('builder.nameLabel')}</label>
           <input
             type="text"
             className="sb-rename-input"
             value={activeBuild.name}
             onChange={(e) => handleRenameBuild(activeBuildId, e.target.value)}
-            placeholder="e.g. Speed Set"
+            placeholder={t('builder.namePlaceholder')}
           />
         </div>
       </div>
 
       {/* Preset selections */}
       <div className="ff-card-framed sb-presets">
-        <div className="sb-presets-title">Quick Set Presets (Active Set Only)</div>
-        <div className="sb-presets-sub">
-          Select a common configuration to instantly pre-fill components
-        </div>
+        <div className="sb-presets-title">{t('builder.presetsTitle')}</div>
+        <div className="sb-presets-sub">{t('builder.presetsSub')}</div>
         <div className="sb-presets-grid">
           {PRESETS.map((preset) => {
             const isActive = activePreset === preset.name;
@@ -908,15 +916,10 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
                 className={`${isActive ? 'ff-btn' : 'ff-btn-secondary'} sb-preset-btn ${
                   isActive ? 'is-active' : ''
                 }`}
-                title={preset.description}
+                title={t(`preset.${preset.name}.desc`, { defaultValue: preset.description })}
               >
                 <span className="sb-preset-name">{preset.name}</span>
-                <span className="sb-preset-desc">
-                  {preset.name === 'WSUC' && 'Standard'}
-                  {preset.name === 'SSSS' && 'All Shark'}
-                  {preset.name === 'WSUC++' && 'Modified'}
-                  {preset.name === 'W-UC' && 'No Stern'}
-                </span>
+                <span className="sb-preset-desc">{t(`preset.${preset.name}.tag`)}</span>
               </button>
             );
           })}
@@ -925,10 +928,8 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
 
       {/* Set multiplier banner */}
       <div className="ff-card-framed sb-multiplier">
-        <div className="sb-multiplier-title">Number of Sets (Active Set Only)</div>
-        <div className="sb-multiplier-sub">
-          Sets the same quantity for all 4 parts of the active set at once
-        </div>
+        <div className="sb-multiplier-title">{t('builder.multiplierTitle')}</div>
+        <div className="sb-multiplier-sub">{t('builder.multiplierSub')}</div>
 
         <div className="sb-multiplier-controls">
           <button
@@ -953,7 +954,7 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
           >
             <Plus size={12} />
           </button>
-          {!allSameQty && <span className="sb-multiplier-warning">Parts have mixed quantities</span>}
+          {!allSameQty && <span className="sb-multiplier-warning">{t('builder.mixedQty')}</span>}
         </div>
       </div>
 
@@ -983,24 +984,24 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
                 <div className="sb-mrm-info">
                   <div className="sb-mrm-title-row">
                     <span className="sb-mrm-star">✦</span>
-                    <h3 className="sb-mrm-title">Magitek Repair Materials</h3>
+                    <h3 className="sb-mrm-title">{t('builder.mrmTitle')}</h3>
                   </div>
                   <span className="sb-mrm-stock">
                     {mrmPart.stock > 0
-                      ? `${formatNumber(mrmPart.stock)} in stock`
-                      : 'Currently out of stock'}
+                      ? t('builder.inStock', { n: formatNumber(mrmPart.stock) })
+                      : t('builder.outOfStockNow')}
                   </span>
                 </div>
                 <div className="sb-mrm-note">
                   <div className="gil-price" style={{ fontSize: '1rem' }}>
                     <span>{formatGil(mrmPart.price).replace(' Gil', '')}</span>
-                    <span className="gil-coin">G</span> ea.
+                    <span className="gil-coin">G</span> {t('selector.ea')}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <span
                       style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}
                     >
-                      Qty:
+                      {t('selector.qty')}
                     </span>
                     <button
                       type="button"
@@ -1061,42 +1062,42 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
               <div className="sb-craft-banner-body">
                 {allInFinishedStock ? (
                   <>
-                    <strong className="sb-craft-banner-title">Ready for Immediate Delivery</strong>
+                    <strong className="sb-craft-banner-title">{t('builder.readyTitle')}</strong>
                     <span className="sb-craft-banner-text">
-                      All {formatNumber(orderAvailability.totalUnits)} requested part
-                      {orderAvailability.totalUnits !== 1 ? 's' : ''} are in finished stock —
-                      nothing needs to be crafted, your order can ship right away.
+                      {t('builder.readyText', {
+                        count: orderAvailability.totalUnits,
+                        n: formatNumber(orderAvailability.totalUnits),
+                      })}
                     </span>
                   </>
                 ) : orderAvailability.complete ? (
                   <>
-                    <strong className="sb-craft-banner-title">All Materials Available</strong>
+                    <strong className="sb-craft-banner-title">{t('builder.availableTitle')}</strong>
                     <span className="sb-craft-banner-text">
-                      {formatNumber(orderAvailability.readyUnits)} of{' '}
-                      {formatNumber(orderAvailability.totalUnits)} parts are ready from finished
-                      stock, and the rest can be crafted right away — no ingredients are missing.
+                      {t('builder.availableText', {
+                        ready: formatNumber(orderAvailability.readyUnits),
+                        total: formatNumber(orderAvailability.totalUnits),
+                      })}
                     </span>
                   </>
                 ) : (
                   <>
-                    <strong className="sb-craft-banner-title">Just a heads up</strong>
-                    <span className="sb-craft-banner-text">
-                      Looks like we are missing some ingredients, so this order will take a little
-                      more time! But don&apos;t worry — we guarantee fast delivery in any case.
-                    </span>
+                    <strong className="sb-craft-banner-title">{t('builder.shortageTitle')}</strong>
+                    <span className="sb-craft-banner-text">{t('builder.shortageText')}</span>
                   </>
                 )}
                 <div className="sb-craft-stats">
                   <span className="sb-craft-stat">
                     <Check size={11} />
-                    {formatNumber(orderAvailability.readyUnits)}/
-                    {formatNumber(orderAvailability.totalUnits)} parts in finished stock
+                    {t('builder.finishedStockStat', {
+                      ready: formatNumber(orderAvailability.readyUnits),
+                      total: formatNumber(orderAvailability.totalUnits),
+                    })}
                   </span>
                   {orderAvailability.complete && orderAvailability.surplusUnits > 0 && (
                     <span className="sb-craft-stat is-success">
                       <Hammer size={11} />
-                      Spare materials for ~{formatNumber(orderAvailability.surplusUnits)} more
-                      parts
+                      {t('builder.spareStat', { n: formatNumber(orderAvailability.surplusUnits) })}
                     </span>
                   )}
                 </div>
@@ -1109,16 +1110,16 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
             <div className="sb-summary-header">
               <div className="sb-summary-title-row">
                 <Anchor />
-                <h3 className="sb-summary-title">Order Summary</h3>
+                <h3 className="sb-summary-title">{t('builder.summary')}</h3>
               </div>
               {builds.length > 1 && (
-                <span className="sb-summary-count">{builds.length} Configured Sets</span>
+                <span className="sb-summary-count">{t('builder.configuredSets', { count: builds.length })}</span>
               )}
             </div>
 
             <div className="sb-summary-grid">
               <div className="sb-components">
-                <span className="sb-components-label">Selected Components</span>
+                <span className="sb-components-label">{t('builder.selectedComponents')}</span>
 
                 {builds.map((build, index) => {
                   const buildSelections = build.selections;
@@ -1139,9 +1140,16 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
                         return (
                           <div key={type} className="sb-build-row">
                             <span className="sb-build-row-type">
-                              {type === 'Materials' ? 'Extra' : type}:
+                              {type === 'Materials' ? t('common.extra') : t(`parts.${type}`)}:
                             </span>
-                            <span className="sb-build-row-name">{part.className}</span>
+                            <span className="sb-build-row-name">
+                              {type === 'Materials'
+                                ? t('builder.mrmTitle')
+                                : `${part.isModified ? `${t('selector.modified')} ` : ''}${t(
+                                    `classes.${part.classKey}`,
+                                    { defaultValue: part.className.replace('-class', '') }
+                                  )}`}
+                            </span>
                             <span className="sb-build-row-qty">×{qty}</span>
                           </div>
                         );
@@ -1155,7 +1163,7 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
                 {activeDiscount && (
                   <>
                     <div className="sb-total-row">
-                      <span className="sb-total-row-label">Subtotal:</span>
+                      <span className="sb-total-row-label">{t('builder.subtotalColon')}</span>
                       <span className="gil-price sb-total-row-value">
                         <span>{formatNumber(overallSubtotal)}</span>
                         <span className="gil-coin sb-coin-xs">G</span>
@@ -1163,7 +1171,7 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
                     </div>
                     <div className="sb-total-row is-success">
                       <span className="sb-total-row-label is-flex">
-                        <Tag size={12} /> Bulk Discount ({discountPct}%):
+                        <Tag size={12} /> {t('builder.bulkDiscountColon', { pct: discountPct })}
                       </span>
                       <span>−{formatNumber(discountAmount)} G</span>
                     </div>
@@ -1171,21 +1179,18 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
                 )}
 
                 <div className={`sb-total-final ${activeDiscount ? 'has-discount' : ''}`}>
-                  <span className="sb-total-label">Total Price</span>
+                  <span className="sb-total-label">{t('builder.totalPriceLabel')}</span>
                   <div className="gil-price sb-total-price">
                     <span>{formatNumber(totalPrice)}</span>
                     <span className="gil-coin sb-coin-xl">G</span>
                   </div>
                   {totalParts > 0 && (
                     <span className="sb-total-parts">
-                      {formatNumber(totalParts)} part{totalParts > 1 ? 's' : ''} ordered
+                      {t('builder.partsOrdered', { count: totalParts, n: formatNumber(totalParts) })}
                     </span>
                   )}
                   {hasUnpricedParts && (
-                    <span className="sb-total-unpriced">
-                      Some selected parts have no price set yet — the final total will be confirmed
-                      by @Alamai.
-                    </span>
+                    <span className="sb-total-unpriced">{t('builder.unpricedNote')}</span>
                   )}
                 </div>
               </div>
@@ -1196,11 +1201,10 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
               <div className="sb-discount-guide">
                 <div className="sb-discount-guide-head">
                   <div className="sb-discount-guide-title">
-                    <Tag size={12} /> Bulk Discount Guide
+                    <Tag size={12} /> {t('builder.guideTitle')}
                   </div>
                   <span className="sb-discount-guide-count">
-                    Current Parts Count:{' '}
-                    <strong>{formatNumber(totalParts)}</strong>
+                    {t('builder.currentCount')} <strong>{formatNumber(totalParts)}</strong>
                   </span>
                 </div>
                 <div className="sb-discount-list">
@@ -1211,9 +1215,9 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
                         key={d.id}
                         className={`sb-discount-chip ${isCurrent ? 'is-current' : ''}`}
                       >
-                        <span>{formatNumber(d.threshold)}+ Parts:</span>
-                        <span className="sb-discount-chip-pct">{Number(d.discountPercent)}% Off</span>
-                        {isCurrent && <span className="sb-discount-chip-active">★ Active</span>}
+                        <span>{t('builder.nPlusParts', { n: formatNumber(d.threshold) })}</span>
+                        <span className="sb-discount-chip-pct">{t('builder.pctOff', { pct: Number(d.discountPercent) })}</span>
+                        {isCurrent && <span className="sb-discount-chip-active">{t('builder.activeChip')}</span>}
                       </div>
                     );
                   })}
@@ -1243,14 +1247,11 @@ export default function SetBuilder({ catalog, onTrackOrder }: SetBuilderProps) {
                     onClick={() => setShowSubmitForm(true)}
                     disabled={!anySelected || orderItems.length === 0}
                   >
-                    <Send size={16} /> Send Order Request
+                    <Send size={16} /> {t('builder.continueOrder')}
                   </button>
                 </div>
 
-                <p className="sb-summary-footnote">
-                  Submitting creates your order request — you'll receive a confirmation code to send
-                  to @Alamai on Discord.
-                </p>
+                <p className="sb-summary-footnote">{t('builder.footnote')}</p>
               </>
             )}
           </div>

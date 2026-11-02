@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
+import i18n from '../i18n';
+import { itemName } from '../itemNames';
 import {
   Anchor,
   RefreshCw,
@@ -22,18 +25,18 @@ import './About.css';
 
 const FULFILLMENT_ROWS: Array<{
   key: keyof NonNullable<ApiAboutStats['fulfillmentTime']>;
-  label: string;
+  labelKey: string;
 }> = [
-  { key: 'p25Ms', label: '25th percentile' },
-  { key: 'medianMs', label: 'Median' },
-  { key: 'p75Ms', label: '75th percentile' },
-  { key: 'p90Ms', label: '90th percentile' },
-  { key: 'avgMs', label: 'Average' },
+  { key: 'p25Ms', labelKey: 'p25' },
+  { key: 'medianMs', labelKey: 'median' },
+  { key: 'p75Ms', labelKey: 'p75' },
+  { key: 'p90Ms', labelKey: 'p90' },
+  { key: 'avgMs', labelKey: 'avg' },
 ];
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', {
+  return new Date(iso).toLocaleDateString(i18n.language, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -82,6 +85,7 @@ function StatCard({ icon, value, label, sub }: StatCardProps) {
 }
 
 export default function About() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<ApiAboutStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -92,7 +96,7 @@ export default function About() {
     try {
       setStats(await fetchAboutStats(bypassCache));
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Unknown error fetching data.');
+      setError(e instanceof Error ? e.message : t('common.unknownError'));
     } finally {
       setLoading(false);
     }
@@ -116,12 +120,9 @@ export default function About() {
       <div className="ab-header">
         <div>
           <h2 className="ab-header-title">
-            <Anchor size={22} /> About the Workshop
+            <Anchor size={22} /> {t('about.title')}
           </h2>
-          <p className="ab-header-sub">
-            Every number on this page is pulled live from the Alamai stock and order tracking
-            system!
-          </p>
+          <p className="ab-header-sub">{t('about.sub')}</p>
         </div>
         <div className="ab-header-actions">
           <button
@@ -131,7 +132,7 @@ export default function About() {
             disabled={loading}
           >
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            {loading ? 'Loading…' : 'Refresh'}
+            {loading ? t('common.loading') : t('common.refresh')}
           </button>
         </div>
       </div>
@@ -147,7 +148,7 @@ export default function About() {
       {loading && !stats && (
         <div className="ab-loading">
           <RefreshCw size={36} className="spin ab-loading-spinner" />
-          <p className="ab-loading-text">Loading workshop statistics…</p>
+          <p className="ab-loading-text">{t('about.loadingText')}</p>
         </div>
       )}
 
@@ -160,29 +161,43 @@ export default function About() {
                 <Anchor size={26} />
               </div>
               <div>
-                <h3 className="ab-intro-title">Welcome!</h3>
-                <span className="ab-intro-role">Alamai — owner &amp; crafter</span>
+                <h3 className="ab-intro-title">{t('about.welcome')}</h3>
+                <span className="ab-intro-role">{t('about.role')}</span>
               </div>
             </div>
             {hasStory ? (
               <p className="ab-intro-text">
-                I'm <strong>Alamai</strong>, the sole owner of this submarine building empire,
-                running the workshop together with a trusted circle of crafters. I started tracking
-                orders on <strong>{formatDate(stats.tracking.firstOrderAt)}</strong> — that's{' '}
-                <strong>{days}</strong> day{days !== 1 ? 's' : ''} of crafting and counting — and
-                since then <strong>{formatNumber(stats.orders.fulfilled)}</strong> order
-                {stats.orders.fulfilled !== 1 ? 's' : ''} have been fulfilled for{' '}
-                <strong>{formatNumber(stats.orders.uniqueClients)}</strong> unique client
-                {stats.orders.uniqueClients !== 1 ? 's' : ''}. That adds up to{' '}
-                <strong>{formatNumber(stats.crafting.fulfilledParts)}</strong> submarine parts
-                crafted and delivered across Eorzea.
+                <Trans
+                  i18nKey="about.introStory"
+                  values={{
+                    date: formatDate(stats.tracking.firstOrderAt),
+                    days: t('units.day', { count: days ?? 0, n: days ?? 0 }),
+                    orders: t('units.orderFulfilled', {
+                      count: stats.orders.fulfilled,
+                      n: formatNumber(stats.orders.fulfilled),
+                    }),
+                    clients: t('units.uniqueClient', {
+                      count: stats.orders.uniqueClients,
+                      n: formatNumber(stats.orders.uniqueClients),
+                    }),
+                    parts: t('units.partCrafted', {
+                      count: stats.crafting.fulfilledParts,
+                      n: formatNumber(stats.crafting.fulfilledParts),
+                    }),
+                  }}
+                  components={{
+                    name: <strong />,
+                    d: <strong />,
+                    dy: <strong />,
+                    o: <strong />,
+                    c: <strong />,
+                    p: <strong />,
+                  }}
+                />
               </p>
             ) : (
               <p className="ab-intro-text">
-                I'm <strong>Alamai</strong>, the sole owner of this submarine building empire,
-                running the workshop together with a trusted circle of crafters. The workshop
-                ledger is still warming up — no fulfilled orders recorded yet. Be the first to
-                place an order!
+                <Trans i18nKey="about.introFresh" components={{ name: <strong /> }} />
               </p>
             )}
           </div>
@@ -192,38 +207,38 @@ export default function About() {
             <StatCard
               icon={<Hammer size={20} />}
               value={formatNumber(stats.crafting.fulfilledParts)}
-              label="Parts crafted"
-              sub={`across ${formatNumber(stats.orders.fulfilled)} fulfilled orders`}
+              label={t('about.partsCrafted')}
+              sub={t('about.acrossOrders', { n: formatNumber(stats.orders.fulfilled) })}
             />
             <StatCard
               icon={<BadgeCheck size={20} />}
               value={formatNumber(stats.orders.fulfilled)}
-              label="Orders fulfilled"
-              sub={`last delivery: ${formatDate(stats.tracking.lastFulfilledAt)}`}
+              label={t('about.ordersFulfilled')}
+              sub={t('about.lastDelivery', { date: formatDate(stats.tracking.lastFulfilledAt) })}
             />
             <StatCard
               icon={<Users size={20} />}
               value={formatNumber(stats.orders.uniqueClients)}
-              label="Unique clients"
-              sub="served to date"
+              label={t('about.uniqueClients')}
+              sub={t('about.servedToDate')}
             />
             <StatCard
               icon={<Coins size={20} />}
               value={formatCompact(stats.orders.revenue)}
-              label="Gil in fulfilled orders"
-              sub={`total order volume — ${formatNumber(stats.orders.revenue)} gil`}
+              label={t('about.gilRevenue')}
+              sub={t('about.orderVolume', { n: formatNumber(stats.orders.revenue) })}
             />
             <StatCard
               icon={<Sparkles size={20} />}
               value={formatCompact(stats.orders.discountsGiven)}
-              label="Gil saved by clients"
-              sub={`via bulk & promo discounts — ${formatNumber(stats.orders.discountsGiven)} gil`}
+              label={t('about.gilSaved')}
+              sub={t('about.viaDiscounts', { n: formatNumber(stats.orders.discountsGiven) })}
             />
             <StatCard
               icon={<Gem size={20} />}
               value={formatCompact(stats.precrafts.worth)}
-              label="Pre-crafts worth right now"
-              sub="to make sure that I can deliver your order as fast as I can!"
+              label={t('about.precrafts')}
+              sub={t('about.precraftSub')}
             />
           </div>
 
@@ -231,7 +246,7 @@ export default function About() {
           {stats.fulfillmentTime && (
             <section className="ab-section">
               <h3 className="ab-section-title">
-                <Clock size={16} /> Order fulfillment time
+                <Clock size={16} /> {t('about.fulTitle')}
               </h3>
               <div className="ff-card ab-ful-card">
                 {FULFILLMENT_ROWS.map((row) => {
@@ -239,7 +254,7 @@ export default function About() {
                   const max = stats.fulfillmentTime!.p90Ms;
                   return (
                     <div key={row.key} className={`ab-ful-row ${row.key === 'medianMs' ? 'is-median' : ''}`}>
-                      <span className="ab-ful-label">{row.label}</span>
+                      <span className="ab-ful-label">{t(`about.ful.${row.labelKey}`)}</span>
                       <div className="ab-top-bar">
                         <div
                           className="ab-top-bar-fill"
@@ -254,10 +269,7 @@ export default function About() {
                     </div>
                   );
                 })}
-                <p className="ab-top-note">
-                  How long past orders took from creation to handover — across{' '}
-                  {formatNumber(stats.fulfillmentTime.orderCount)} fulfilled orders.
-                </p>
+                <p className="ab-top-note">{t('about.fulNote', { n: formatNumber(stats.fulfillmentTime.orderCount) })}</p>
               </div>
             </section>
           )}
@@ -266,13 +278,13 @@ export default function About() {
           {stats.topParts.length > 0 && (
             <section className="ab-section">
               <h3 className="ab-section-title">
-                <TrendingUp size={16} /> Most requested parts
+                <TrendingUp size={16} /> {t('about.topTitle')}
               </h3>
               <div className="ff-card ab-top-parts">
                 {stats.topParts.map((part, i) => (
                   <div key={part.name} className="ab-top-row">
                     <span className="ab-top-rank">#{i + 1}</span>
-                    <span className="ab-top-name">{part.name}</span>
+                    <span className="ab-top-name">{itemName(part.name)}</span>
                     <div className="ab-top-bar">
                       <div
                         className="ab-top-bar-fill"
@@ -286,9 +298,7 @@ export default function About() {
                     <span className="ab-top-qty">{formatNumber(part.quantity)}</span>
                   </div>
                 ))}
-                <p className="ab-top-note">
-                  Ranked by total units delivered with fulfilled orders.
-                </p>
+                <p className="ab-top-note">{t('about.topNote')}</p>
               </div>
             </section>
           )}
@@ -296,40 +306,28 @@ export default function About() {
           {/* Why trust the workshop */}
           <section className="ab-section">
             <h3 className="ab-section-title">
-              <BookOpen size={16} /> Why order here
+              <BookOpen size={16} /> {t('about.whyTitle')}
             </h3>
             <div className="ab-trust-grid">
               <div className="ff-card ab-trust-card">
                 <Ship size={18} className="ab-trust-icon" />
-                <h4>Every order gets a tracking code</h4>
-                <p>
-                  The moment you place an order you receive a unique code — follow its progress
-                  from confirmation to delivery on the Orders tab, any time.
-                </p>
+                <h4>{t('about.trust1Title')}</h4>
+                <p>{t('about.trust1Text')}</p>
               </div>
               <div className="ff-card ab-trust-card">
                 <BadgeCheck size={18} className="ab-trust-icon" />
-                <h4>A transparent production pipeline</h4>
-                <p>
-                  Confirmed → In progress → Finished → Fulfilled. You always know exactly which
-                  production stage your submarine is in.
-                </p>
+                <h4>{t('about.trust2Title')}</h4>
+                <p>{t('about.trust2Text')}</p>
               </div>
               <div className="ff-card ab-trust-card">
                 <Hammer size={18} className="ab-trust-icon" />
-                <h4>Powered by a crafter network</h4>
-                <p>
-                  A trusted circle of crafters keeps the workshop stocked with materials and
-                  pre-crafts — fairly paid, quality checked, so your order never waits on one
-                  pair of hands.
-                </p>
+                <h4>{t('about.trust3Title')}</h4>
+                <p>{t('about.trust3Text')}</p>
               </div>
             </div>
           </section>
 
-          <p className="ab-updated">
-            Figures generated {formatDate(stats.generatedAt)} · live from the Alamai stock system
-          </p>
+          <p className="ab-updated">{t('about.updated', { date: formatDate(stats.generatedAt) })}</p>
         </>
       )}
     </div>

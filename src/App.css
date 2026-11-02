@@ -105,6 +105,36 @@
   vertical-align: middle;
 }
 
+/* ─── Language switcher ────────────────────────────────────────────────────── */
+.app-lang-switcher {
+  display: flex;
+  gap: 0.3rem;
+  justify-content: center;
+  margin-top: 0.75rem;
+}
+
+.app-lang-btn {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  background: transparent;
+  color: var(--color-text-muted, #b8a67a);
+  border: 1px solid rgba(197, 160, 89, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.app-lang-btn:hover {
+  color: var(--color-text-title, #f0e6d2);
+  border-color: rgba(197, 160, 89, 0.7);
+}
+
+.app-lang-btn.is-active {
+  color: #1a1206;
+  background: linear-gradient(180deg, #d4b872, #b8965a);
+  border-color: #d4b872;
+}
+
 /* ─── Responsive: tablet & below ───────────────────────────────────────────── */
 @media (max-width: 768px) {
   .app-brand-row {

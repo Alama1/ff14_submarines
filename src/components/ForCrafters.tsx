@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
+import { itemName } from '../itemNames';
 import {
   Wrench,
   RefreshCw,
@@ -61,6 +63,7 @@ interface RowData extends ApiMissingMaterial {
 }
 
 export default function ForCrafters() {
+  const { t } = useTranslation();
   const [missing, setMissing] = useState<ApiMissingMaterial[]>([]);
   const [prices, setPrices] = useState<ApiPriceEntry[]>([]);
   const [settings, setSettings] = useState<ApiPriceSettings | null>(null);
@@ -88,11 +91,12 @@ export default function ForCrafters() {
       setSettings(settingsData);
       setBonusTiers(bonusTiersData);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Unknown error fetching data.');
+      setError(e instanceof Error ? e.message : t('common.unknownError'));
     } finally {
       setLoading(false);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t]);
 
   const didFetch = useRef(false);
   useEffect(() => {
@@ -152,8 +156,8 @@ export default function ForCrafters() {
       let vb: string | number;
       switch (sortField) {
         case 'name':
-          va = a.name.toLowerCase();
-          vb = b.name.toLowerCase();
+          va = itemName(a.name).toLowerCase();
+          vb = itemName(b.name).toLowerCase();
           break;
         case 'remaining':
           va = a.remaining;
@@ -201,7 +205,7 @@ export default function ForCrafters() {
       <div className="fc-header">
         <div>
           <h2 className="fc-header-title">
-            <Wrench size={22} /> Crafters Shopping List
+            <Wrench size={22} /> {t('crafters.title')}
           </h2>
         </div>
         <div className="fc-header-actions">
@@ -211,7 +215,7 @@ export default function ForCrafters() {
             onClick={() => setOpenPanel((p) => (p === 'claim' ? null : 'claim'))}
           >
             <Hammer size={14} />
-            {openPanel === 'claim' ? 'Hide Claim Form' : 'Claim Some Crafts'}
+            {openPanel === 'claim' ? t('crafters.hideClaim') : t('crafters.claimBtn')}
           </button>
           <button
             type="button"
@@ -219,7 +223,7 @@ export default function ForCrafters() {
             onClick={() => setOpenPanel((p) => (p === 'my' ? null : 'my'))}
           >
             <Package size={14} />
-            {openPanel === 'my' ? 'Hide My Claims' : 'My Claims'}
+            {openPanel === 'my' ? t('crafters.hideMyClaims') : t('crafters.myClaimsBtn')}
           </button>
           <button
             type="button"
@@ -228,7 +232,7 @@ export default function ForCrafters() {
             disabled={loading}
           >
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            {loading ? 'Loading…' : 'Refresh'}
+            {loading ? t('common.loading') : t('common.refresh')}
           </button>
         </div>
       </div>
@@ -236,19 +240,20 @@ export default function ForCrafters() {
       {/* Update cadence notice */}
       <div className="fc-notice fc-notice-cadence">
         <Clock size={14} />
-        <span>
-          This list is updated automatically as stock changes. Some positions can increase or
-          decrease depending on current workshop inventory and active orders.
-        </span>
+        <span>{t('crafters.noticeCadence')}</span>
       </div>
 
       {/* NQ / Quick Synthesis notice */}
       <div className="fc-notice fc-notice-nq">
         <Zap size={15} />
         <span>
-          <strong className="fc-notice-strong-accent">NQ materials only</strong> — no HQ quality is
-          required for any of these ingredients. Feel free to use{' '}
-          <strong>Quick Synthesis</strong> to fill the quantities faster!
+          <Trans
+            i18nKey="crafters.noticeNq"
+            components={{
+              accent: <strong className="fc-notice-strong-accent" />,
+              strong: <strong />,
+            }}
+          />
         </span>
       </div>
 
@@ -256,9 +261,13 @@ export default function ForCrafters() {
       <div className="fc-notice fc-notice-deadline">
         <AlertTriangle size={15} />
         <span>
-          <strong className="fc-notice-strong-accent">1-week deadline</strong> — all claimed orders
-          should be completed within <strong>one week</strong>. Otherwise, I cannot guarantee that I
-          will buy them immediately. Please plan your crafts wisely!
+          <Trans
+            i18nKey="crafters.noticeDeadline"
+            components={{
+              accent: <strong className="fc-notice-strong-accent" />,
+              strong: <strong />,
+            }}
+          />
         </span>
       </div>
 
@@ -270,15 +279,17 @@ export default function ForCrafters() {
               <MessageSquare size={20} />
             </div>
             <div>
-              <h4 className="fc-cta-title">Want to take a craft?</h4>
+              <h4 className="fc-cta-title">{t('crafters.ctaTitle')}</h4>
               <p className="fc-cta-sub">
-                Hit <strong>Claim Some Crafts</strong>, pick what you will deliver and send the
-                request — then poke me in Discord for a quick confirmation!
+                <Trans
+                  i18nKey="crafters.ctaSub"
+                  components={{ strong: <strong /> }}
+                />
               </p>
             </div>
           </div>
           <div className="fc-cta-handle">
-            <span>Any questions? DM</span>
+            <span>{t('crafters.ctaDm')}</span>
             <span className="fc-cta-handle-name">@Alamai</span>
           </div>
         </div>
@@ -312,15 +323,15 @@ export default function ForCrafters() {
       {loading && rows.length === 0 && (
         <div className="fc-loading">
           <RefreshCw size={36} className="spin fc-loading-spinner" />
-          <p className="fc-loading-text">Fetching Ingredient List…</p>
+          <p className="fc-loading-text">{t('crafters.loadingText')}</p>
         </div>
       )}
 
       {!loading && rows.length === 0 && !error && (
         <div className="fc-empty">
           <CheckCircle size={36} />
-          <span className="fc-empty-title">The workshop is fully stocked!</span>
-          <span className="fc-empty-sub">No materials are currently needed. Check back later!</span>
+          <span className="fc-empty-title">{t('crafters.emptyTitle')}</span>
+          <span className="fc-empty-sub">{t('crafters.emptySub')}</span>
         </div>
       )}
 
@@ -331,8 +342,12 @@ export default function ForCrafters() {
             <div className="fc-claimed-note">
               <Hammer size={12} />
               <span>
-                <strong className="fc-claimed-count">{fullyClaimedCount}</strong> material
-                {fullyClaimedCount !== 1 ? 's' : ''} already fully claimed by crafters — thank you!
+                <Trans
+                  i18nKey="crafters.claimedNote"
+                  count={fullyClaimedCount}
+                  values={{ n: fullyClaimedCount }}
+                  components={{ strong: <strong className="fc-claimed-count" /> }}
+                />
               </span>
             </div>
           )}
@@ -347,26 +362,26 @@ export default function ForCrafters() {
                   className={`${filter === 'all' ? 'ff-btn' : 'ff-btn-secondary'} fc-filter-btn`}
                   onClick={() => setFilter('all')}
                 >
-                  All
+                  {t('crafters.filterAll')}
                 </button>
                 <button
                   type="button"
                   className={`${filter === 'needs_crafting' ? 'ff-btn' : 'ff-btn-secondary'} fc-filter-btn is-crafting`}
                   onClick={() => setFilter('needs_crafting')}
                 >
-                  <Hammer size={12} /> Needs Crafting
+                  <Hammer size={12} /> {t('crafters.filterNeeds')}
                 </button>
               </div>
               {filter !== 'all' && (
                 <span className="fc-toolbar-meta">
-                  Showing {sortedItems.length} item{sortedItems.length !== 1 ? 's' : ''} · Total:{' '}
+                  {t('crafters.showing', { count: sortedItems.length, n: sortedItems.length })}{' '}
                   <strong className="fc-toolbar-total">{formatGil(filteredGrandTotal)} G</strong>
                 </span>
               )}
               {/* Mobile-only sort controls (desktop uses the sortable headers) */}
               <div className="fc-mobile-sort">
                 <label className="fc-sort-label" htmlFor="fc-sort-field">
-                  Sort by
+                  {t('crafters.sortBy')}
                 </label>
                 <select
                   id="fc-sort-field"
@@ -374,16 +389,16 @@ export default function ForCrafters() {
                   value={sortField}
                   onChange={(e) => handleSortFieldChange(e.target.value as SortField)}
                 >
-                  <option value="remaining">Needed</option>
-                  <option value="name">Ingredient</option>
-                  <option value="pricePerUnit">Price / Unit</option>
-                  <option value="totalPrice">Total Price</option>
+                  <option value="remaining">{t('crafters.colNeeded')}</option>
+                  <option value="name">{t('crafters.colIngredient')}</option>
+                  <option value="pricePerUnit">{t('crafters.colPrice')}</option>
+                  <option value="totalPrice">{t('crafters.colTotalPrice')}</option>
                 </select>
                 <button
                   type="button"
                   className="ff-btn-secondary fc-sort-dir-btn"
                   onClick={toggleSortDir}
-                  title={sortDir === 'asc' ? 'Ascending — tap to flip' : 'Descending — tap to flip'}
+                  title={sortDir === 'asc' ? t('crafters.sortAscTip') : t('crafters.sortDescTip')}
                 >
                   {sortDir === 'asc' ? '↑' : '↓'}
                 </button>
@@ -391,7 +406,7 @@ export default function ForCrafters() {
             </div>
 
             {/* Table */}
-            <div className="fc-table" role="table" aria-label="Crafters shopping list">
+            <div className="fc-table" role="table" aria-label={t('crafters.title')}>
               <div className="fc-thead-row" role="row">
                 <button
                   type="button"
@@ -400,18 +415,18 @@ export default function ForCrafters() {
                   aria-sort={sortField === 'name' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
                   onClick={() => handleSort('name')}
                 >
-                  Ingredient
+                  {t('crafters.colIngredient')}
                   <SortIndicator field="name" sortField={sortField} sortDir={sortDir} />
                 </button>
                 <span className="fc-th is-right" role="columnheader">
-                  Current / Target
+                  {t('crafters.colCurrentTarget')}
                 </span>
                 <span
                   className="fc-th is-right"
                   role="columnheader"
-                  title="Raw materials demanded by active workshop orders"
+                  title={t('crafters.ordersTip')}
                 >
-                  Orders
+                  {t('crafters.colOrders')}
                 </span>
                 <button
                   type="button"
@@ -420,7 +435,7 @@ export default function ForCrafters() {
                   aria-sort={sortField === 'remaining' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
                   onClick={() => handleSort('remaining')}
                 >
-                  Needed
+                  {t('crafters.colNeeded')}
                   <SortIndicator field="remaining" sortField={sortField} sortDir={sortDir} />
                 </button>
                 <button
@@ -430,7 +445,7 @@ export default function ForCrafters() {
                   aria-sort={sortField === 'pricePerUnit' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
                   onClick={() => handleSort('pricePerUnit')}
                 >
-                  Price / Unit
+                  {t('crafters.colPrice')}
                   <SortIndicator field="pricePerUnit" sortField={sortField} sortDir={sortDir} />
                 </button>
                 <button
@@ -440,7 +455,7 @@ export default function ForCrafters() {
                   aria-sort={sortField === 'totalPrice' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
                   onClick={() => handleSort('totalPrice')}
                 >
-                  Total Price
+                  {t('crafters.colTotalPrice')}
                   <SortIndicator field="totalPrice" sortField={sortField} sortDir={sortDir} />
                 </button>
               </div>
@@ -449,7 +464,7 @@ export default function ForCrafters() {
                 {sortedItems.length === 0 && (
                   <div className="fc-empty-row" role="row">
                     <div className="fc-empty-cell" role="cell">
-                      No ingredients found for this filter.
+                      {t('crafters.emptyRow')}
                     </div>
                   </div>
                 )}
@@ -465,16 +480,19 @@ export default function ForCrafters() {
                       <div className="fc-cell fc-cell-name" role="cell">
                         <div className="fc-name-wrap">
                           <div className="fc-name-row">
-                            <span>{item.name}</span>
+                            <span>{itemName(item.name)}</span>
                             {item.claimed > 0 && (
                               <span
-                                title={claimerNames ? `Claimed by: ${claimerNames}` : undefined}
+                                title={claimerNames ? t('crafters.claimedBy', { names: claimerNames }) : undefined}
                                 className={`fc-claim-chip ${isFullyClaimed ? 'is-full' : ''}`}
                               >
                                 <Hammer size={10} />
                                 {isFullyClaimed
-                                  ? `Fully Claimed (${formatGil(item.claimed)})`
-                                  : `${formatGil(item.claimed)} / ${formatGil(claimTarget)} claimed`}
+                                  ? t('crafters.fullyClaimed', { n: formatGil(item.claimed) })
+                                  : t('crafters.claimedProgress', {
+                                      claimed: formatGil(item.claimed),
+                                      target: formatGil(claimTarget),
+                                    })}
                               </span>
                             )}
                           </div>
@@ -491,7 +509,7 @@ export default function ForCrafters() {
 
                       {/* Stock (current / target) */}
                       <div className="fc-cell is-right fc-cell-stock" role="cell">
-                        <span className="fc-stat-label">Current / Target</span>
+                        <span className="fc-stat-label">{t('crafters.colCurrentTarget')}</span>
                         <span className="fc-stock-muted">{formatGil(item.currentStock)}</span>
                         <span className="fc-stock-sep">/</span>
                         <span className="fc-stock-target">{formatGil(item.desiredQuantity)}</span>
@@ -501,9 +519,9 @@ export default function ForCrafters() {
                       <div
                         className="fc-cell is-right fc-cell-orders"
                         role="cell"
-                        title="Raw materials demanded by active workshop orders"
+                        title={t('crafters.ordersTip')}
                       >
-                        <span className="fc-stat-label">Orders</span>
+                        <span className="fc-stat-label">{t('crafters.colOrders')}</span>
                         <span className="fc-stock-muted">
                           {(item.orderNeeded ?? 0) > 0 ? formatGil(item.orderNeeded!) : '—'}
                         </span>
@@ -516,7 +534,7 @@ export default function ForCrafters() {
                         }`}
                         role="cell"
                       >
-                        <span className="fc-stat-label">Needed</span>
+                        <span className="fc-stat-label">{t('crafters.colNeeded')}</span>
                         <span className="fc-needed-value">
                           {item.remaining > 0 ? formatGil(item.remaining) : '✓'}
                         </span>
@@ -524,13 +542,13 @@ export default function ForCrafters() {
 
                       {/* Price per unit */}
                       <div className="fc-cell is-right fc-cell-price" role="cell">
-                        <span className="fc-stat-label">Price / Unit</span>
+                        <span className="fc-stat-label">{t('crafters.colPrice')}</span>
                         <span className="fc-price-value">{formatPrice(item.pricePerUnit)}</span>
                       </div>
 
                       {/* Total price */}
                       <div className="fc-cell is-right fc-cell-total" role="cell">
-                        <span className="fc-stat-label">Total</span>
+                        <span className="fc-stat-label">{t('crafters.colTotal')}</span>
                         {item.totalPrice > 0 ? (
                           <span className="gil-price fc-total-price">
                             <span className="fc-total-amount">{formatGil(item.totalPrice)}</span>
@@ -549,7 +567,7 @@ export default function ForCrafters() {
               {sortedItems.length > 0 && (
                 <div className="fc-tfoot-row" role="row">
                   <div className="fc-tfoot-label" role="cell">
-                    {filter === 'all' ? 'Grand Total' : 'Needs Crafting Total'}
+                    {filter === 'all' ? t('crafters.grandTotal') : t('crafters.needsTotal')}
                   </div>
                   <div className="fc-tfoot-total" role="cell">
                     <span className="gil-price fc-tfoot-price">
@@ -565,8 +583,9 @@ export default function ForCrafters() {
             <div className="fc-footer-note">
               <ExternalLink size={11} />
               <span>
-                Live data from the Alamai stock system. Prices are per-unit estimates synced from
-                the Market Board{settings?.world ? ` on ${settings.world}` : ''}.
+                {t('crafters.footerNote', {
+                  world: settings?.world ? t('crafters.onWorld', { world: settings.world }) : '',
+                })}
               </span>
             </div>
           </div>

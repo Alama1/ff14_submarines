@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { formatGil, formatNumber } from '../utils/format';
 import { Hammer, Plus, Minus } from 'lucide-react';
 import { ApiSubmarinePart, PartType } from '../api/types';
@@ -26,6 +27,7 @@ export default function PartSelector({
   onQuantityChange,
   craftability,
 }: PartSelectorProps) {
+  const { t } = useTranslation();
   const currentClassKey = selectedPart ? selectedPart.classKey : '';
   const currentIsModified = selectedPart ? selectedPart.isModified : false;
 
@@ -85,20 +87,20 @@ export default function PartSelector({
     totalAvailable > 0 &&
     totalAvailable < quantity;
   const shortageTooltip = craftability.bottlenecks.length
-    ? 'Some ingredients are still being sourced for this part — delivery is still guaranteed.'
+    ? t('selector.shortageTip')
     : undefined;
 
   return (
     <div className="ff-card-framed fade-in ps-card">
       <div className="ps-header">
         <h3 className="ps-header-title">
-          <span className="ps-header-star">✦</span> {partType}
+          <span className="ps-header-star">✦</span> {t(`parts.${partType}`)}
         </h3>
 
         <div className="ps-header-actions">
           {selectedPart && (
             <button type="button" className="ps-omit-btn" onClick={() => onSelectPart(null)}>
-              Omit
+              {t('selector.omit')}
             </button>
           )}
 
@@ -113,7 +115,7 @@ export default function PartSelector({
               disabled={!selectedPart}
             />
             <div className="toggle-switch"></div>
-            <span className="ps-modified-label">Modified</span>
+            <span className="ps-modified-label">{t('selector.modified')}</span>
           </label>
         </div>
       </div>
@@ -130,7 +132,7 @@ export default function PartSelector({
               }`}
               onClick={() => handleClassChange(cls.key)}
             >
-              {cls.name.replace('-class', '')}
+              {t(`classes.${cls.key}`, { defaultValue: cls.name.replace('-class', '') })}
             </button>
           );
         })}
@@ -142,19 +144,21 @@ export default function PartSelector({
             <div className="gil-price ps-price-row">
               <span>{formatGil(selectedPart.price).replace(' Gil', '')}</span>
               <span className="gil-coin">G</span>
-              {quantity > 1 && <span className="ps-price-ea">ea.</span>}
+              {quantity > 1 && <span className="ps-price-ea">{t('selector.ea')}</span>}
             </div>
             <div className="ps-badges">
               {physicalStock > 0 && (
-                <span className="badge badge-success ps-badge">Ready ({physicalStock})</span>
+                <span className="badge badge-success ps-badge">
+                  {t('selector.ready', { count: physicalStock })}
+                </span>
               )}
               {canCraftRest && (
                 <span
                   className="badge ps-badge ps-badge-craft"
-                  title={`Materials in stock to craft ${formatNumber(craftable)} more of this part`}
+                  title={t('selector.craftTip', { count: formatNumber(craftable) })}
                 >
                   <Hammer size={8} />
-                  Craftable immediately
+                  {t('selector.craftable')}
                 </span>
               )}
               {partiallyAvailable && (
@@ -163,18 +167,21 @@ export default function PartSelector({
                   title={shortageTooltip ?? undefined}
                 >
                   <Hammer size={8} />
-                  {formatNumber(totalAvailable)}/{formatNumber(quantity)} ready now
+                  {t('selector.readyNow', {
+                    ready: formatNumber(totalAvailable),
+                    wanted: formatNumber(quantity),
+                  })}
                 </span>
               )}
               {totalAvailable === 0 && (
-                <span className="badge badge-warning ps-badge ps-badge-out">Out of Stock</span>
+                <span className="badge badge-warning ps-badge ps-badge-out">{t('selector.outOfStock')}</span>
               )}
             </div>
           </div>
 
           <div className="ps-qty-panel">
             <div className="ps-qty-row">
-              <span className="ps-qty-label">Qty:</span>
+              <span className="ps-qty-label">{t('selector.qty')}</span>
               <button
                 type="button"
                 className="ff-btn-secondary ps-qty-btn"
@@ -200,7 +207,7 @@ export default function PartSelector({
 
             {quantity > 1 && (
               <div className="ps-subtotal-row">
-                <span className="ps-subtotal-label">Subtotal:</span>
+                <span className="ps-subtotal-label">{t('selector.subtotal')}</span>
                 <div className="gil-price">
                   <span className="ps-subtotal-amount">{formatNumber(linePrice)}</span>
                   <span className="gil-coin ps-subtotal-coin">G</span>
@@ -210,7 +217,7 @@ export default function PartSelector({
           </div>
         </>
       ) : (
-        <div className="ps-empty">Part omitted (select a class above to include)</div>
+        <div className="ps-empty">{t('selector.empty')}</div>
       )}
     </div>
   );
