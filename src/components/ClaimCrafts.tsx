@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { formatNumber } from '../utils/format';
 import { addRecentClaimCode } from '../utils/orderCodes';
-import { getTrustedAccessCode } from '../utils/trustedAccess';
+import { getTrustedAccessCode, getTrustedNickname } from '../utils/trustedAccess';
 import { submitClaim } from '../api/endpoints';
 import type { ApiCraftClaim, ApiCrafterDiscount } from '../api/types';
 import './MaterialsCalculator.css';
@@ -113,7 +113,8 @@ export default function ClaimCrafts({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [rawActiveIndex, setActiveIndex] = useState(0);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
-  const [nickname, setNickname] = useState('');
+  // Trusted crafters get the name the admin attached to their code prefilled.
+  const [nickname, setNickname] = useState(getTrustedNickname() ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState<ApiCraftClaim | null>(null);
@@ -258,7 +259,7 @@ export default function ClaimCrafts({
 
   const resetForm = () => {
     setEntries([]);
-    setNickname('');
+    setNickname(getTrustedNickname() ?? '');
     setError('');
     setSubmitted(null);
   };

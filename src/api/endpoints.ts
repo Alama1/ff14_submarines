@@ -131,6 +131,12 @@ export function lookupClaim(code: string): Promise<ApiCraftClaim> {
   return apiGet<ApiCraftClaim>(`/inventory/claims/lookup/${normalized}`);
 }
 
+/** Resolves a trusted access code to the crafter name the admin attached to it. */
+export function lookupTrustedCode(code: string): Promise<{ name: string }> {
+  const normalized = encodeURIComponent(code.trim().toUpperCase());
+  return apiGet<{ name: string }>(`/inventory/claims/trusted/${normalized}`);
+}
+
 /** Cancels your own claim by code (allowed while pending or confirmed). */
 export function cancelClaim(code: string): Promise<ApiCraftClaim> {
   const normalized = encodeURIComponent(code.trim().toUpperCase());

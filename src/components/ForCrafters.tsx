@@ -15,11 +15,13 @@ import {
   Package,
 } from 'lucide-react';
 import { getTrustedAccessCode, setTrustedAccessCode } from '../utils/trustedAccess';
+import { ApiError } from '../api/client';
 import {
   fetchCrafterDiscounts,
   fetchMissingMaterials,
-  fetchPrices,
   fetchPriceSettings,
+  fetchPrices,
+  lookupTrustedCode,
 } from '../api/endpoints';
 import {
   ApiCrafterDiscount,
@@ -81,12 +83,28 @@ export default function ForCrafters() {
   // (it used to be the @Alamai handle — single clicks there were accidental)
   const [trustedCode, setTrustedCode] = useState<string | null>(getTrustedAccessCode);
 
-  const handleSecretTap = () => {
+  const handleSecretTap = async () => {
     const input = window.prompt(t('claim.secretPrompt'), trustedCode ?? '');
     if (input === null) return;
     const code = input.trim().toUpperCase();
-    setTrustedAccessCode(code || null);
-    setTrustedCode(code || null);
+    if (!code) {
+      setTrustedAccessCode(null);
+      setTrustedCode(null);
+      return;
+    }
+    // Verify the code right away and keep its attached name for nickname prefill.
+    try {
+      const { name } = await lookupTrustedCode(code);
+      setTrustedAccessCode(code, name);
+      setTrustedCode(code);
+    } catch (e: unknown) {
+      const invalid = e instanceof ApiError && e.status === 404;
+      if (invalid) {
+        setTrustedAccessCode(null);
+        setTrustedCode(null);
+      }
+      window.alert(invalid ? t('claim.secretInvalid') : e instanceof Error ? e.message : t('common.unknownError'));
+    }
   };
 
   const fetchData = useCallback(async (bypassCache = false) => {

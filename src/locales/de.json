@@ -323,6 +323,7 @@
     "claimMax": "Max",
     "claimMaxTip": "Bis zum Bedarf der Werkstatt plus einen zusätzlichen Stapel auffüllen ({{n}})",
     "secretPrompt": "Gib mir den Code:",
+    "secretInvalid": "Dieser Code wurde nicht erkannt — bitte prüfe ihn oder frag nach einem neuen.",
     "secretActiveTip": "Vertrauter Zugriff aktiv — Anfragen werden automatisch bestätigt",
     "overMaxWarn": "Höchstmenge überschritten — melde dich zuerst bei @Alamai, bevor du claimst",
     "successTrustedSub": "Als vertrauter Handwerker wird deine Anfrage <strong>automatisch bestätigt</strong>. Liefere einfach die Gegenstände!",

@@ -323,6 +323,7 @@
     "claimMax": "Max",
     "claimMaxTip": "Fill up to what the workshop needs plus one extra stack ({{n}})",
     "secretPrompt": "Give me da code:",
+    "secretInvalid": "That code was not recognised — double-check it or ask for a fresh one.",
     "secretActiveTip": "Trusted access active — claims are confirmed automatically",
     "overMaxWarn": "Maximum amount exceeded — notify @Alamai first before claiming",
     "successTrustedSub": "As a trusted crafter your claim is <strong>confirmed automatically</strong>. Just deliver the items!",

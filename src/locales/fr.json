@@ -323,6 +323,7 @@
     "claimMax": "Max",
     "claimMaxTip": "Remplir jusqu'aux besoins de l'atelier plus une pile supplémentaire ({{n}})",
     "secretPrompt": "Donne-moi le code :",
+    "secretInvalid": "Ce code n'a pas été reconnu — vérifie-le ou demande-en un nouveau.",
     "secretActiveTip": "Accès de confiance actif — les demandes sont confirmées automatiquement",
     "overMaxWarn": "Quantité maximale dépassée — prévenez d'abord @Alamai avant de réserver",
     "successTrustedSub": "En tant qu'artisan de confiance, votre demande est <strong>confirmée automatiquement</strong>. Livrez simplement les objets !",
