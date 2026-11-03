@@ -189,6 +189,8 @@ export interface ApiCraftClaim {
 export interface CreateCraftClaimDto {
   nickname: string;
   items: Array<{ materialId: string; quantity: number }>;
+  /** Trusted-crafter access code — a match makes the claim instantly confirmed. */
+  accessCode?: string;
 }
 
 // ─── Inventory service ────────────────────────────────────────────────────────

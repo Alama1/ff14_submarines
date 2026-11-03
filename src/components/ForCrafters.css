@@ -198,6 +198,19 @@
   padding: 0.15rem 0.5rem;
   border-radius: 3px;
   font-family: monospace;
+  border: none;
+  font-size: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.fc-trusted-dot {
+  color: #10b981;
+}
+
+.fc-notice-expiry svg {
+  color: #ef4444;
 }
 
 /* Alert / loading / empty states */

@@ -3,6 +3,7 @@ import { useTranslation, Trans } from 'react-i18next';
 import i18n from '../i18n';
 import { itemName } from '../itemNames';
 import {
+  AlertTriangle,
   Boxes,
   Check,
   Hammer,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import { formatNumber } from '../utils/format';
 import { addRecentClaimCode } from '../utils/orderCodes';
+import { getTrustedAccessCode } from '../utils/trustedAccess';
 import { submitClaim } from '../api/endpoints';
 import type { ApiCraftClaim, ApiCrafterDiscount } from '../api/types';
 import './MaterialsCalculator.css';
@@ -63,6 +65,11 @@ function useCountUp(target: number, duration = 500): number {
 
 /** FF14 max stack size. */
 const STACK_SIZE = 999;
+
+/** Claim ceiling: what the workshop needs, rounded up to full stacks, plus one extra stack (4500 -> 5994). */
+function maxClaimQty(remaining: number): number {
+  return (Math.ceil(remaining / STACK_SIZE) + 1) * STACK_SIZE;
+}
 
 /** "1 stack + 101" for 1100 — only meaningful once a full stack is reached. */
 function stackLabel(qty: number): string | null {
@@ -114,6 +121,14 @@ export default function ClaimCrafts({
 
   const itemsById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
 
+  // Trusted crafters may pass Max (with a warning); everyone else is clamped.
+  const trusted = !!getTrustedAccessCode();
+  const capOf = (id: string): number => {
+    const item = itemsById.get(id);
+    return item && item.remaining > 0 ? maxClaimQty(item.remaining) : Infinity;
+  };
+  const clampQty = (id: string, qty: number) => Math.min(qty, trusted ? Infinity : capOf(id));
+
   // Suggestion order: what the workshop still needs first, then the rest
   // Search + sort match the localized display names, not the English source
   const suggestions = useMemo(() => {
@@ -140,10 +155,10 @@ export default function ClaimCrafts({
       const existing = prev.find((e) => e.id === item.id);
       if (existing) {
         return prev.map((e) =>
-          e.id === item.id ? { ...e, qty: e.qty + safeQty } : e
+          e.id === item.id ? { ...e, qty: clampQty(item.id, e.qty + safeQty) } : e
         );
       }
-      return [...prev, { id: item.id, qty: safeQty }];
+      return [...prev, { id: item.id, qty: clampQty(item.id, safeQty) }];
     });
     setJustAddedId(item.id);
     window.setTimeout(() => setJustAddedId(null), 700);
@@ -158,13 +173,13 @@ export default function ClaimCrafts({
 
   const changeQty = (id: string, delta: number) => {
     setEntries((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, qty: Math.max(1, e.qty + delta) } : e))
+      prev.map((e) => (e.id === id ? { ...e, qty: Math.max(1, clampQty(id, e.qty + delta)) } : e))
     );
   };
 
   const setEntryQty = (id: string, value: number) => {
     setEntries((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, qty: Math.max(1, Math.floor(value) || 1) } : e))
+      prev.map((e) => (e.id === id ? { ...e, qty: Math.max(1, clampQty(id, Math.floor(value) || 1)) } : e))
     );
   };
 
@@ -224,9 +239,11 @@ export default function ClaimCrafts({
     setSubmitting(true);
     setError('');
     try {
+      const accessCode = getTrustedAccessCode();
       const claim = await submitClaim({
         nickname: nickname.trim(),
         items: entries.map((e) => ({ materialId: e.id, quantity: e.qty })),
+        ...(accessCode ? { accessCode } : {}),
       });
       // Register the claim the moment it exists — "My claims" must show it
       // even if the user never clicks "View My Claims".
@@ -255,12 +272,22 @@ export default function ClaimCrafts({
             <Check size={34} />
           </div>
           <h3 className="cc-success-title">{t('claim.successTitle')}</h3>
-          <p className="cc-success-sub">
-            <Trans
-              i18nKey="claim.successSub"
-              components={{ strong: <strong />, handle: <strong>@Alamai</strong> }}
-            />
-          </p>
+          {submitted.status === 'confirmed' ? (
+            <p className="cc-success-sub">
+              <Trans i18nKey="claim.successTrustedSub" components={{ strong: <strong /> }} />
+            </p>
+          ) : (
+            <p className="cc-success-sub">
+              <Trans
+                i18nKey="claim.successSub"
+                components={{ strong: <strong />, handle: <strong>@Alamai</strong> }}
+              />
+            </p>
+          )}
+          {/* Stored a code but the claim came back pending -> it was rejected/rotated */}
+          {submitted.status === 'pending' && getTrustedAccessCode() && (
+            <p className="cc-success-sub">{t('claim.trustedRejected')}</p>
+          )}
 
           <div className="cc-success-payout">
             <span className="cc-success-payout-label">{t('claim.payout')}</span>
@@ -405,6 +432,7 @@ export default function ClaimCrafts({
             const lineTotal = item.unitPrice ? item.unitPrice * entry.qty : 0;
             const coverage = item.remaining > 0 ? Math.min(1, entry.qty / item.remaining) : null;
             const coversAll = coverage !== null && coverage >= 1;
+            const cap = capOf(entry.id);
             return (
               <div
                 key={entry.id}
@@ -435,6 +463,7 @@ export default function ClaimCrafts({
                       type="number"
                       className="mc-qty-input is-entry"
                       min="1"
+                      max={trusted || !Number.isFinite(cap) ? undefined : cap}
                       value={entry.qty}
                       onChange={(e) => setEntryQty(entry.id, parseInt(e.target.value, 10))}
                       aria-label={t('claim.qtyAria', { name: itemName(item.name) })}
@@ -498,6 +527,21 @@ export default function ClaimCrafts({
                         {t('claim.fillNeed')}
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className="mc-coverage-fill"
+                      onClick={() => setEntryQty(entry.id, maxClaimQty(item.remaining))}
+                      title={t('claim.claimMaxTip', { n: formatNumber(maxClaimQty(item.remaining)) })}
+                    >
+                      {t('claim.claimMax')}
+                    </button>
+                  </div>
+                )}
+                {/* Only reachable for trusted crafters — everyone else is clamped */}
+                {entry.qty > cap && (
+                  <div className="ff-alert ff-alert-warning cc-alert mc-over-max">
+                    <AlertTriangle size={14} />
+                    <span>{t('claim.overMaxWarn')}</span>
                   </div>
                 )}
               </div>

@@ -268,7 +268,8 @@
     "grandTotal": "Grand total",
     "needsTotal": "Total À fabriquer",
     "footerNote": "Données en direct du système de stock Alamai. Les prix sont des estimations unitaires synchronisées depuis l'Hôtel des ventes{{world}}.",
-    "onWorld": " sur {{world}}"
+    "onWorld": " sur {{world}}",
+    "noticeExpiry": "<accent>Réservation 1 heure</accent> — les demandes en attente réservent les matériaux pendant <strong>1 heure</strong>. Sans confirmation dans ce délai, elles sont annulées automatiquement."
   },
   "claim": {
     "title": "Réserver des crafts",
@@ -318,7 +319,14 @@
     "roundUpTip": "Arrondir chaque matériau à des stacks complets de 999",
     "clear": "Vider",
     "submitFailed": "Échec de l'envoi de la réservation. Réessayez.",
-    "bulkBonus": "Bonus quantité ({{pct}} %)"
+    "bulkBonus": "Bonus quantité ({{pct}} %)",
+    "claimMax": "Max",
+    "claimMaxTip": "Remplir jusqu'aux besoins de l'atelier plus une pile supplémentaire ({{n}})",
+    "secretPrompt": "Donne-moi le code :",
+    "secretActiveTip": "Accès de confiance actif — les demandes sont confirmées automatiquement",
+    "overMaxWarn": "Quantité maximale dépassée — prévenez d'abord @Alamai avant de réserver",
+    "successTrustedSub": "En tant qu'artisan de confiance, votre demande est <strong>confirmée automatiquement</strong>. Livrez simplement les objets !",
+    "trustedRejected": "Votre code d'accès n'a pas été accepté — cette demande doit encore être confirmée."
   },
   "claims": {
     "cancelledNote": "Cette réservation a été annulée — les matériaux sont de retour sur la liste de courses.",

@@ -268,7 +268,8 @@
     "grandTotal": "Grand Total",
     "needsTotal": "Needs Crafting Total",
     "footerNote": "Live data from the Alamai stock system. Prices are per-unit estimates synced from the Market Board{{world}}.",
-    "onWorld": " on {{world}}"
+    "onWorld": " on {{world}}",
+    "noticeExpiry": "<accent>1-hour reservation</accent> — pending claims hold materials for <strong>1 hour</strong>. If they are not confirmed within that time, they are cancelled automatically."
   },
   "claim": {
     "title": "Claim Some Crafts",
@@ -318,7 +319,14 @@
     "roundUpTip": "Round every material up to full stacks of 999",
     "clear": "Clear",
     "submitFailed": "Failed to submit the claim. Please try again.",
-    "bulkBonus": "Bulk Bonus ({{pct}}%)"
+    "bulkBonus": "Bulk Bonus ({{pct}}%)",
+    "claimMax": "Max",
+    "claimMaxTip": "Fill up to what the workshop needs plus one extra stack ({{n}})",
+    "secretPrompt": "Give me da code:",
+    "secretActiveTip": "Trusted access active — claims are confirmed automatically",
+    "overMaxWarn": "Maximum amount exceeded — notify @Alamai first before claiming",
+    "successTrustedSub": "As a trusted crafter your claim is <strong>confirmed automatically</strong>. Just deliver the items!",
+    "trustedRejected": "Your access code was not accepted — this claim still needs confirmation."
   },
   "claims": {
     "cancelledNote": "This claim was cancelled — the materials are back on the shopping list.",

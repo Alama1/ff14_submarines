@@ -9,10 +9,12 @@ import {
   ExternalLink,
   MessageSquare,
   Clock,
+  Timer,
   Zap,
   CheckCircle,
   Package,
 } from 'lucide-react';
+import { getTrustedAccessCode, setTrustedAccessCode } from '../utils/trustedAccess';
 import {
   fetchCrafterDiscounts,
   fetchMissingMaterials,
@@ -75,6 +77,17 @@ export default function ForCrafters() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [openPanel, setOpenPanel] = useState<'claim' | 'my' | null>(null);
   const [myClaimsCode, setMyClaimsCode] = useState<string | null>(null);
+  // Secret entry: double-tapping the Discord CTA icon stores the trusted access code
+  // (it used to be the @Alamai handle — single clicks there were accidental)
+  const [trustedCode, setTrustedCode] = useState<string | null>(getTrustedAccessCode);
+
+  const handleSecretTap = () => {
+    const input = window.prompt(t('claim.secretPrompt'), trustedCode ?? '');
+    if (input === null) return;
+    const code = input.trim().toUpperCase();
+    setTrustedAccessCode(code || null);
+    setTrustedCode(code || null);
+  };
 
   const fetchData = useCallback(async (bypassCache = false) => {
     setLoading(true);
@@ -271,12 +284,30 @@ export default function ForCrafters() {
         </span>
       </div>
 
+      {/* 1-hour pending expiry banner */}
+      <div className="fc-notice fc-notice-expiry">
+        <Timer size={15} />
+        <span>
+          <Trans
+            i18nKey="crafters.noticeExpiry"
+            components={{
+              accent: <strong className="fc-notice-strong-accent" />,
+              strong: <strong />,
+            }}
+          />
+        </span>
+      </div>
+
       {/* Discord CTA Banner */}
       <div className="ff-card-framed fc-cta">
         <div className="fc-cta-row">
           <div className="fc-cta-lead">
-            <div className="fc-cta-icon">
-              <MessageSquare size={20} />
+            <div
+              className="fc-cta-icon"
+              onDoubleClick={handleSecretTap}
+              title={trustedCode ? t('claim.secretActiveTip') : undefined}
+            >
+              {trustedCode ? <CheckCircle size={20} className="fc-trusted-dot" /> : <MessageSquare size={20} />}
             </div>
             <div>
               <h4 className="fc-cta-title">{t('crafters.ctaTitle')}</h4>

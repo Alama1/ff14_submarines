@@ -268,7 +268,8 @@
     "grandTotal": "Gesamtsumme",
     "needsTotal": "Summe „Braucht Craft\"",
     "footerNote": "Live-Daten aus dem Alamai-Lagersystem. Preise sind Schätzungen pro Stück vom Marktboard{{world}}.",
-    "onWorld": " auf {{world}}"
+    "onWorld": " auf {{world}}",
+    "noticeExpiry": "<accent>1 Stunde Reservierung</accent> — offene Anfragen halten Materialien für <strong>1 Stunde</strong>. Ohne Bestätigung in dieser Zeit werden sie automatisch storniert."
   },
   "claim": {
     "title": "Crafts übernehmen",
@@ -318,7 +319,14 @@
     "roundUpTip": "Alle Materialien auf volle 999er-Stapel aufrunden",
     "clear": "Leeren",
     "submitFailed": "Die Claim konnte nicht gesendet werden. Bitte erneut versuchen.",
-    "bulkBonus": "Mengenbonus ({{pct}} %)"
+    "bulkBonus": "Mengenbonus ({{pct}} %)",
+    "claimMax": "Max",
+    "claimMaxTip": "Bis zum Bedarf der Werkstatt plus einen zusätzlichen Stapel auffüllen ({{n}})",
+    "secretPrompt": "Gib mir den Code:",
+    "secretActiveTip": "Vertrauter Zugriff aktiv — Anfragen werden automatisch bestätigt",
+    "overMaxWarn": "Höchstmenge überschritten — melde dich zuerst bei @Alamai, bevor du claimst",
+    "successTrustedSub": "Als vertrauter Handwerker wird deine Anfrage <strong>automatisch bestätigt</strong>. Liefere einfach die Gegenstände!",
+    "trustedRejected": "Dein Zugangscode wurde nicht akzeptiert — diese Anfrage muss noch bestätigt werden."
   },
   "claims": {
     "cancelledNote": "Diese Claim wurde storniert — die Materialien sind zurück auf der Einkaufsliste.",
