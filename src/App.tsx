@@ -7,6 +7,7 @@ import ForCrafters from './components/ForCrafters';
 import SetBuilder from './components/SetBuilder';
 import OrdersPanel from './components/OrdersPanel';
 import About from './components/About';
+import NewsBanner from './components/NewsBanner';
 import { Anchor, Hammer, RefreshCw, Wrench, Ship, Info } from 'lucide-react';
 import './App.css';
 
@@ -167,6 +168,8 @@ function App() {
           affiliated with Square Enix.
         </p>
       </footer>
+
+      <NewsBanner />
     </div>
   );
 }

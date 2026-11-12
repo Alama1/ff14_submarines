@@ -391,5 +391,11 @@
     "trust3Title": "Porté par un réseau d'artisans",
     "trust3Text": "Un cercle de confiance d'artisans approvisionne l'atelier en matériaux et pré-crafts — payés équitablement, contrôlés en qualité, pour que votre commande ne dépende jamais d'une seule paire de mains.",
     "updated": "Chiffres générés le {{date}} · en direct du système de stock Alamai"
+  },
+  "news": {
+    "label": "Actualités",
+    "prev": "Actualité précédente",
+    "next": "Actualité suivante",
+    "close": "Fermer l'actualité"
   }
 }

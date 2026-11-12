@@ -279,3 +279,13 @@ export interface ApiAboutStats {
   } | null;
   topParts: Array<{ name: string; quantity: number }>;
 }
+
+export interface ApiNewsItem {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string | null;
+  accentColor: string | null;
+  active: boolean;
+  sortOrder: number;
+}

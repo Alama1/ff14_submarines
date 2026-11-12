@@ -5,6 +5,7 @@ import {
   ApiCraftClaim,
   ApiDiscount,
   ApiMissingMaterial,
+  ApiNewsItem,
   ApiOrder,
   ApiPriceEntry,
   ApiPriceSettings,
@@ -25,6 +26,7 @@ import {
   CACHE_KEY_PRICE_SETTINGS,
   CACHE_KEY_IN_PROGRESS,
   CACHE_KEY_ABOUT_STATS,
+  CACHE_KEY_NEWS,
   RECIPES_TTL,
   DISCOUNTS_TTL,
   CRAFTER_DISCOUNTS_TTL,
@@ -33,6 +35,7 @@ import {
   PRICE_SETTINGS_TTL,
   IN_PROGRESS_TTL,
   ABOUT_STATS_TTL,
+  NEWS_TTL,
 } from '../cache';
 
 // ─── Recipes / parts ──────────────────────────────────────────────────────────
@@ -182,4 +185,16 @@ export async function fetchAboutStats(bypassCache = false): Promise<ApiAboutStat
   const stats = await apiGet<ApiAboutStats>('/about');
   setCache(CACHE_KEY_ABOUT_STATS, stats);
   return stats;
+}
+
+// ─── News banner (active announcements) ───────────────────────────────────────
+
+export async function fetchActiveNews(bypassCache = false): Promise<ApiNewsItem[]> {
+  if (!bypassCache) {
+    const cached = getCache<ApiNewsItem[]>(CACHE_KEY_NEWS, NEWS_TTL);
+    if (cached) return cached;
+  }
+  const news = await apiGet<ApiNewsItem[]>('/news');
+  setCache(CACHE_KEY_NEWS, news);
+  return news;
 }

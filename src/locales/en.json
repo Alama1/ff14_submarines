@@ -391,5 +391,11 @@
     "trust3Title": "Powered by a crafter network",
     "trust3Text": "A trusted circle of crafters keeps the workshop stocked with materials and pre-crafts — fairly paid, quality checked, so your order never waits on one pair of hands.",
     "updated": "Figures generated {{date}} · live from the Alamai stock system"
+  },
+  "news": {
+    "label": "News",
+    "prev": "Previous news",
+    "next": "Next news",
+    "close": "Close news"
   }
 }

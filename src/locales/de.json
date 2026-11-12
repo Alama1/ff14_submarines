@@ -391,5 +391,11 @@
     "trust3Title": "Getragen von einem Handwerkernetz",
     "trust3Text": "Ein Vertrauenszirkel von Handwerkern hält die Werkstatt mit Materialien und Vor-Crafts gefüllt — fair bezahlt, qualitätsgeprüft, damit deine Bestellung nie von einem einzigen Paar Händen abhängt.",
     "updated": "Zahlen generiert am {{date}} · live aus dem Alamai-Lagersystem"
+  },
+  "news": {
+    "label": "Neuigkeiten",
+    "prev": "Vorherige Neuigkeit",
+    "next": "Nächste Neuigkeit",
+    "close": "Neuigkeit schließen"
   }
 }
