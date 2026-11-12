@@ -232,7 +232,7 @@
   "crafters": {
     "title": "Liste de courses pour les artisans",
     "hideClaim": "Masquer le formulaire",
-    "claimBtn": "Réserver des crafts",
+    "claimBtn": "Réserver / Calculer la paye",
     "hideMyClaims": "Masquer Mes Réservations",
     "myClaimsBtn": "Mes Réservations",
     "noticeCadence": "Cette liste est mise à jour automatiquement selon l'évolution des stocks. Certaines demandes peuvent augmenter ou diminuer selon l'inventaire de l'atelier et les commandes actives.",
@@ -255,12 +255,9 @@
     "colIngredient": "Ingrédient",
     "colPrice": "Prix / unité",
     "colTotalPrice": "Prix total",
-    "colCurrentTarget": "Actuel / Cible",
-    "colOrders": "Commandes",
     "colTotal": "Total",
     "sortAscTip": "Croissant — cliquer pour inverser",
     "sortDescTip": "Décroissant — cliquer pour inverser",
-    "ordersTip": "Matières premières demandées par les commandes actives de l'atelier",
     "emptyRow": "Aucun ingrédient pour ce filtre.",
     "claimedBy": "Réservé par : {{names}}",
     "fullyClaimed": "Entièrement réservé ({{n}})",
@@ -272,7 +269,8 @@
     "noticeExpiry": "<accent>Réservation 1 heure</accent> — les demandes en attente réservent les matériaux pendant <strong>1 heure</strong>. Sans confirmation dans ce délai, elles seront annulées automatiquement."
   },
   "claim": {
-    "title": "Réserver des crafts",
+    "title": "Réserver / Calculer la paye",
+    "minClaimNote": "La réservation minimale est de {{n}} pour toutes les ressources",
     "sub": "Choisissez ce que vous fabriquerez ou livrerez et envoyez une réservation — l'atelier la confirme, puis vous fabriquez et êtes payé.",
     "hideTip": "Masquer le formulaire de réservation",
     "searchPlaceholder": "Saisissez un matériau — essayez « cobalt »…",

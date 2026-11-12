@@ -467,16 +467,6 @@ export default function ForCrafters() {
                   {t('crafters.colIngredient')}
                   <SortIndicator field="name" sortField={sortField} sortDir={sortDir} />
                 </button>
-                <span className="fc-th is-right" role="columnheader">
-                  {t('crafters.colCurrentTarget')}
-                </span>
-                <span
-                  className="fc-th is-right"
-                  role="columnheader"
-                  title={t('crafters.ordersTip')}
-                >
-                  {t('crafters.colOrders')}
-                </span>
                 <button
                   type="button"
                   className="fc-th is-sortable is-right"
@@ -554,26 +544,6 @@ export default function ForCrafters() {
                             </div>
                           )}
                         </div>
-                      </div>
-
-                      {/* Stock (current / target) */}
-                      <div className="fc-cell is-right fc-cell-stock" role="cell">
-                        <span className="fc-stat-label">{t('crafters.colCurrentTarget')}</span>
-                        <span className="fc-stock-muted">{formatGil(item.currentStock)}</span>
-                        <span className="fc-stock-sep">/</span>
-                        <span className="fc-stock-target">{formatGil(item.desiredQuantity)}</span>
-                      </div>
-
-                      {/* Active order demand */}
-                      <div
-                        className="fc-cell is-right fc-cell-orders"
-                        role="cell"
-                        title={t('crafters.ordersTip')}
-                      >
-                        <span className="fc-stat-label">{t('crafters.colOrders')}</span>
-                        <span className="fc-stock-muted">
-                          {(item.orderNeeded ?? 0) > 0 ? formatGil(item.orderNeeded!) : '—'}
-                        </span>
                       </div>
 
                       {/* Needed (claims-adjusted, stock target + active orders merged server-side) */}

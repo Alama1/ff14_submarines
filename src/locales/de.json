@@ -232,7 +232,7 @@
   "crafters": {
     "title": "Einkaufsliste der Handwerker",
     "hideClaim": "Claim-Formular ausblenden",
-    "claimBtn": "Crafts übernehmen",
+    "claimBtn": "Crafts übernehmen / Vergütung berechnen",
     "hideMyClaims": "Meine Claims ausblenden",
     "myClaimsBtn": "Meine Claims",
     "noticeCadence": "Diese Liste wird bei Bestandsänderungen automatisch aktualisiert. Manche Positionen können je nach Lagerbestand und aktiven Bestellungen steigen oder fallen.",
@@ -255,12 +255,9 @@
     "colIngredient": "Zutat",
     "colPrice": "Preis / Stück",
     "colTotalPrice": "Gesamtpreis",
-    "colCurrentTarget": "Aktuell / Ziel",
-    "colOrders": "Bestellungen",
     "colTotal": "Gesamt",
     "sortAscTip": "Aufsteigend — zum Umschalten tippen",
     "sortDescTip": "Absteigend — zum Umschalten tippen",
-    "ordersTip": "Rohmaterialien, die aktive Bestellungen der Werkstatt verlangen",
     "emptyRow": "Keine Zutaten für diesen Filter.",
     "claimedBy": "Übernommen von: {{names}}",
     "fullyClaimed": "Voll übernommen ({{n}})",
@@ -272,7 +269,8 @@
     "noticeExpiry": "<accent>1 Stunde Reservierung</accent> — offene Anfragen halten Materialien für <strong>1 Stunde</strong>. Ohne Bestätigung in dieser Zeit werden sie automatisch storniert."
   },
   "claim": {
-    "title": "Crafts übernehmen",
+    "title": "Crafts übernehmen / Vergütung berechnen",
+    "minClaimNote": "Mindestabnahme für alle Ressourcen ist {{n}}",
     "sub": "Wähle, was du fertigen oder liefern willst, und sende eine Claim-Anfrage — die Werkstatt bestätigt, dann fertigst du und wirst bezahlt.",
     "hideTip": "Claim-Formular ausblenden",
     "searchPlaceholder": "Material eingeben — versuch „Kobalt\"…",

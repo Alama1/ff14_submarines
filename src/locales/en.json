@@ -232,7 +232,7 @@
   "crafters": {
     "title": "Crafters Shopping List",
     "hideClaim": "Hide Claim Form",
-    "claimBtn": "Claim Some Crafts",
+    "claimBtn": "Claim / Calculate Payout",
     "hideMyClaims": "Hide My Claims",
     "myClaimsBtn": "My Claims",
     "noticeCadence": "This list is updated automatically as stock changes. Some positions can increase or decrease depending on current workshop inventory and active orders.",
@@ -255,12 +255,9 @@
     "colIngredient": "Ingredient",
     "colPrice": "Price / Unit",
     "colTotalPrice": "Total Price",
-    "colCurrentTarget": "Current / Target",
-    "colOrders": "Orders",
     "colTotal": "Total",
     "sortAscTip": "Ascending — tap to flip",
     "sortDescTip": "Descending — tap to flip",
-    "ordersTip": "Raw materials demanded by active workshop orders",
     "emptyRow": "No ingredients found for this filter.",
     "claimedBy": "Claimed by: {{names}}",
     "fullyClaimed": "Fully Claimed ({{n}})",
@@ -272,8 +269,9 @@
     "noticeExpiry": "<accent>1-hour reservation</accent> — pending claims hold materials for <strong>1 hour</strong>. If they are not confirmed within that time, they are cancelled automatically."
   },
   "claim": {
-    "title": "Claim Some Crafts",
+    "title": "Claim / Calculate Payout",
     "sub": "Pick what you will craft or deliver and send a claim request — the workshop confirms it, then you craft and get paid.",
+    "minClaimNote": "Minimum claim for all resources is {{n}}",
     "hideTip": "Hide the claim form",
     "searchPlaceholder": "Type a material — try \"cobalt\"…",
     "searchAria": "Search material",

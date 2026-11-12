@@ -335,7 +335,7 @@
 
 .fc-thead-row {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) repeat(5, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
   border-bottom: 1px solid rgba(197, 160, 89, 0.2);
   background: rgba(197, 160, 89, 0.04);
 }
@@ -365,7 +365,7 @@
 
 .fc-body-row {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) repeat(5, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
   align-items: start;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   transition: background 0.15s;
@@ -450,26 +450,6 @@
   border-radius: 2px;
 }
 
-/* Stock cell */
-.fc-cell-stock {
-  font-variant-numeric: tabular-nums;
-  font-size: 0.82rem;
-  white-space: nowrap;
-}
-
-.fc-stock-muted {
-  color: var(--color-text-muted);
-}
-
-.fc-stock-sep {
-  color: rgba(197, 160, 89, 0.35);
-  margin: 0 0.15rem;
-}
-
-.fc-stock-target {
-  color: var(--color-text-title);
-}
-
 /* Needed cell */
 .fc-needed-value {
   font-weight: 600;
@@ -518,13 +498,13 @@
 /* Footer totals row */
 .fc-tfoot-row {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) repeat(5, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
   border-top: 1px solid rgba(197, 160, 89, 0.2);
   background: rgba(197, 160, 89, 0.04);
 }
 
 .fc-tfoot-label {
-  grid-column: 1 / 6;
+  grid-column: 1 / 4;
   padding: 0.75rem 1rem;
   text-align: right;
   font-size: 0.8rem;
@@ -637,7 +617,6 @@
     grid-template-columns: 1fr 1fr;
     grid-template-areas:
       'name name'
-      'stock orders'
       'needed price'
       'total total';
     gap: 0.6rem;
@@ -659,8 +638,6 @@
   }
 
   /* Stat tiles: each metric in its own visually separated box */
-  .fc-cell.fc-cell-stock,
-  .fc-cell.fc-cell-orders,
   .fc-cell.fc-cell-needed,
   .fc-cell.fc-cell-price,
   .fc-cell.fc-cell-total {
@@ -670,14 +647,6 @@
     border-radius: 4px;
     padding: 0.45rem 0.65rem;
     text-align: left;
-  }
-
-  .fc-cell.fc-cell-stock {
-    grid-area: stock;
-  }
-
-  .fc-cell.fc-cell-orders {
-    grid-area: orders;
   }
 
   .fc-cell.fc-cell-needed {

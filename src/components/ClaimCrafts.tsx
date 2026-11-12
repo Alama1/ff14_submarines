@@ -66,6 +66,9 @@ function useCountUp(target: number, duration = 500): number {
 /** FF14 max stack size. */
 const STACK_SIZE = 999;
 
+/** Smallest claim per material — tiny claims are a hassle to receive and pay out. */
+const MIN_CLAIM_QTY = 500;
+
 /** Claim ceiling: what the workshop needs, rounded up to full stacks, plus one extra stack (4500 -> 5994). */
 function maxClaimQty(remaining: number): number {
   return (Math.ceil(remaining / STACK_SIZE) + 1) * STACK_SIZE;
@@ -128,7 +131,8 @@ export default function ClaimCrafts({
     const item = itemsById.get(id);
     return item && item.remaining > 0 ? maxClaimQty(item.remaining) : Infinity;
   };
-  const clampQty = (id: string, qty: number) => Math.min(qty, trusted ? Infinity : capOf(id));
+  const clampQty = (id: string, qty: number) =>
+    Math.min(Math.max(qty, MIN_CLAIM_QTY), trusted ? Infinity : capOf(id));
 
   // Suggestion order: what the workshop still needs first, then the rest
   // Search + sort match the localized display names, not the English source
@@ -420,6 +424,8 @@ export default function ClaimCrafts({
           </div>
         </div>
       </div>
+      <p className="cc-min-note">{t('claim.minClaimNote', { n: formatNumber(MIN_CLAIM_QTY) })}</p>
+
       {/* Entries */}
       {entries.length === 0 ? (
         <div className="mc-empty">
@@ -463,7 +469,7 @@ export default function ClaimCrafts({
                     <input
                       type="number"
                       className="mc-qty-input is-entry"
-                      min="1"
+                      min={MIN_CLAIM_QTY}
                       max={trusted || !Number.isFinite(cap) ? undefined : cap}
                       value={entry.qty}
                       onChange={(e) => setEntryQty(entry.id, parseInt(e.target.value, 10))}
