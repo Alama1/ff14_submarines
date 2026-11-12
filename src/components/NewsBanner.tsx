@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { fetchActiveNews } from '../api/endpoints';
 import { ApiNewsItem } from '../api/types';
+import { renderMarkdown } from '../utils/markdown';
 import './NewsBanner.css';
 
 /** News ids the customer dismissed — they never come back on this browser. */
@@ -81,7 +82,7 @@ export default function NewsBanner() {
             {n.imageUrl && <img className="nb-image" src={n.imageUrl} alt="" />}
             <div className="nb-text">
               <h4 className="nb-title">{n.title}</h4>
-              <p className="nb-desc">{n.description}</p>
+              <div className="nb-desc">{renderMarkdown(n.description)}</div>
             </div>
           </div>
         ))}

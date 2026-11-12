@@ -113,8 +113,33 @@
   margin: 0;
   font-size: 13px;
   color: var(--color-text-main);
-  white-space: pre-line;
   overflow-y: auto;
+}
+.nb-desc a {
+  color: var(--color-gold-light);
+  text-decoration: underline;
+}
+.nb-desc code {
+  background: var(--bg-input);
+  border: 1px solid var(--color-gold-dark);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+}
+.nb-desc ul {
+  list-style: disc;
+  margin: 4px 0 4px 18px;
+  padding: 0;
+}
+.nb-desc li {
+  margin: 2px 0;
+}
+.nb-desc > * + * {
+  margin-top: 4px;
+}
+.nb-desc .nb-para {
+  margin: 0;
 }
 
 .nb-nav {
