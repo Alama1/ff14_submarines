@@ -82,7 +82,8 @@ export default function NewsBanner() {
             {n.imageUrl && <img className="nb-image" src={n.imageUrl} alt="" />}
             <div className="nb-text">
               <h4 className="nb-title">{n.title}</h4>
-              <div className="nb-desc">{renderMarkdown(n.description)}</div>
+              {/* description is admin-authored markdown+HTML (owner-approved trust model) */}
+              <div className="nb-desc" dangerouslySetInnerHTML={{ __html: renderMarkdown(n.description) }} />
             </div>
           </div>
         ))}

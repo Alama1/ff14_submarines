@@ -135,6 +135,11 @@
 .nb-desc li {
   margin: 2px 0;
 }
+.nb-desc img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
 .nb-desc > * + * {
   margin-top: 4px;
 }
